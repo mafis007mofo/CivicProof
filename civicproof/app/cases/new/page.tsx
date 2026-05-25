@@ -77,7 +77,7 @@ export default function NewCasePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [declarationSigned, setDeclarationSigned] = useState(false);
 
-  const updateForm = (field: keyof FormState, value: string) => {
+  const updateForm = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   };

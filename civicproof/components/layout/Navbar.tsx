@@ -22,7 +22,7 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="hidden text-sm font-medium transition-colors sm:inline-flex"
+            className="inline-flex text-sm font-medium transition-colors"
             style={{ color: "var(--text-muted)" }}
           >
             Dashboard

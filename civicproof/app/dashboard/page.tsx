@@ -3,6 +3,7 @@
 import { StatusBadge } from "@/components/cases/StatusBadge";
 import Navbar from "@/components/layout/Navbar";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
+import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import { getAllCases, getEvidenceForCase } from "@/lib/localStorage";
 import type { IncidentCase, IncidentType } from "@/types";
 import { Calendar, Car, ChevronRight, MapPin, Plus, Shield, Zap } from "lucide-react";
@@ -10,6 +11,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type FilterValue = "all" | IncidentType;
+
+type CaseCardModel = {
+  incidentCase: IncidentCase;
+  score: ScoreBreakdown;
+};
 
 const filters: { label: string; value: FilterValue }[] = [
   { label: "All", value: "all" },
@@ -29,8 +35,7 @@ function getTypeLabel(type: IncidentType): string {
   return type === "road_accident" ? "Road Accident" : "Civic Issue";
 }
 
-function CaseCard({ incidentCase }: { incidentCase: IncidentCase }) {
-  const score = calculateEvidenceScore(incidentCase, getEvidenceForCase(incidentCase.id));
+function CaseCard({ incidentCase, score }: CaseCardModel) {
   const Icon = incidentCase.incidentType === "road_accident" ? Car : MapPin;
   const accent = score.color === "green" ? "var(--accent-green)" : score.color === "amber" ? "var(--accent-amber)" : "var(--accent-red)";
 
@@ -108,24 +113,37 @@ function CaseCard({ incidentCase }: { incidentCase: IncidentCase }) {
 }
 
 export default function DashboardPage() {
-  const [cases, setCases] = useState<IncidentCase[]>([]);
+  const [caseCards, setCaseCards] = useState<CaseCardModel[]>([]);
   const [filter, setFilter] = useState<FilterValue>("all");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setCases(getAllCases());
+      const loadedCases = getAllCases();
+      setCaseCards(
+        loadedCases.map((incidentCase) => ({
+          incidentCase,
+          score: calculateEvidenceScore(incidentCase, getEvidenceForCase(incidentCase.id)),
+        })),
+      );
+      setIsLoading(false);
     }, 0);
 
     return () => window.clearTimeout(timer);
   }, []);
 
-  const sortedCases = useMemo(
-    () => [...cases].sort((left, right) => Number(right.id === "demo-001") - Number(left.id === "demo-001")),
-    [cases],
+  const sortedCaseCards = useMemo(
+    () =>
+      [...caseCards].sort(
+        (left, right) => Number(right.incidentCase.id === "demo-001") - Number(left.incidentCase.id === "demo-001"),
+      ),
+    [caseCards],
   );
 
-  const filteredCases = sortedCases.filter((incidentCase) => filter === "all" || incidentCase.incidentType === filter);
-  const nonDemoCount = cases.filter((incidentCase) => incidentCase.id !== "demo-001").length;
+  const filteredCases = sortedCaseCards.filter(
+    ({ incidentCase }) => filter === "all" || incidentCase.incidentType === filter,
+  );
+  const nonDemoCount = caseCards.filter(({ incidentCase }) => incidentCase.id !== "demo-001").length;
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
@@ -143,7 +161,7 @@ export default function DashboardPage() {
               Your Cases
             </h1>
             <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
-              {cases.length} cases documented
+              {caseCards.length} cases documented
             </p>
           </div>
           <Link href="/cases/new" className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-bold transition hover:scale-[1.02]" style={{ backgroundColor: "var(--accent-green)", color: "var(--bg-primary)" }}>
@@ -174,12 +192,24 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
-          {filteredCases.map((incidentCase) => (
-            <CaseCard key={incidentCase.id} incidentCase={incidentCase} />
+          {filteredCases.map(({ incidentCase, score }) => (
+            <CaseCard key={incidentCase.id} incidentCase={incidentCase} score={score} />
           ))}
         </div>
 
-        {nonDemoCount === 0 ? (
+        {isLoading ? (
+          <section className="mt-8 grid gap-5 lg:grid-cols-2">
+            {[0, 1].map((item) => (
+              <div
+                key={item}
+                className="h-80 animate-pulse rounded-lg border"
+                style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}
+              />
+            ))}
+          </section>
+        ) : null}
+
+        {!isLoading && nonDemoCount === 0 ? (
           <section className="mt-8 rounded-lg border p-8 text-center" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
             <Zap className="mx-auto h-10 w-10" style={{ color: "var(--text-muted)" }} />
             <h2 className="mt-4 text-2xl font-bold" style={{ color: "var(--text-primary)" }}>

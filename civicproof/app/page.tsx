@@ -1,6 +1,13 @@
+import { DEMO_PACKET } from "@/lib/demoCase";
+import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
 import { AlertTriangle, Car, CheckCircle2, Clock, Download, FileX, MapPin, Upload, Zap } from "lucide-react";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "CivicProof - Turn Evidence into Action",
+  description: "Create official-ready action packets from civic complaint and road incident evidence.",
+};
 
 const problemCards = [
   {
@@ -154,7 +161,7 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-4 rounded-md border px-4 py-3 text-sm" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 35%, transparent)", color: "var(--accent-amber)" }}>
-              3 items missing from checklist
+              {DEMO_PACKET.missingEvidence.length} items missing from evidence
             </div>
           </div>
         </div>

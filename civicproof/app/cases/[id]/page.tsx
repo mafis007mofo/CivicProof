@@ -4,13 +4,17 @@ import { StatusBadge } from "@/components/cases/StatusBadge";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
+import civicIssueChecklist from "@/data/checklists/civic-issue-checklist.json";
+import potholeDamageChecklist from "@/data/checklists/pothole-damage-checklist.json";
+import roadAccidentChecklist from "@/data/checklists/road-accident-checklist.json";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
 import { getCaseById, getEvidenceForCase, getPacketForCase } from "@/lib/localStorage";
-import type { EvidenceItem, IncidentCase } from "@/types";
-import { ArrowLeft, CheckCircle2, FileText, ImageIcon, Upload, Zap } from "lucide-react";
+import type { ScoreBreakdown } from "@/lib/evidenceScore";
+import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
+import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, ImageIcon, Upload, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 function formatCaseType(type: IncidentCase["incidentType"]): string {
   return type === "road_accident" ? "Road Accident" : "Civic Issue";
@@ -20,15 +24,84 @@ function trustLabelText(item: EvidenceItem): string {
   return item.trustLabel?.replaceAll("_", " ") ?? "unlabeled";
 }
 
+function getChecklistForCase(incidentCase: IncidentCase): string[] {
+  if (incidentCase.incidentType === "road_accident") {
+    return roadAccidentChecklist;
+  }
+
+  const searchableText = `${incidentCase.title} ${incidentCase.description}`.toLowerCase();
+  if (searchableText.includes("pothole")) {
+    return potholeDamageChecklist;
+  }
+
+  return civicIssueChecklist;
+}
+
+type CaseDetailState = {
+  incidentCase: IncidentCase | null;
+  evidence: EvidenceItem[];
+  packet: GeneratedPacket | null;
+  score: ScoreBreakdown | null;
+  checklist: string[];
+  isLoading: boolean;
+};
+
 export default function CaseDetailPage() {
-  const params = useParams<{ id: string }>();
+  const rawParams = useParams();
+  const rawId = rawParams.id;
+  const id = typeof rawId === "string" ? rawId : Array.isArray(rawId) ? rawId[0] ?? "" : "";
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
+  const [detail, setDetail] = useState<CaseDetailState>({
+    incidentCase: null,
+    evidence: [],
+    packet: null,
+    score: null,
+    checklist: [],
+    isLoading: true,
+  });
 
-  const incidentCase = useMemo(() => getCaseById(params.id), [params.id]);
-  const evidence = useMemo(() => getEvidenceForCase(params.id), [params.id]);
-  const packet = useMemo(() => getPacketForCase(params.id), [params.id]);
-  const score = incidentCase ? calculateEvidenceScore(incidentCase, evidence) : null;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!id) {
+        setDetail((current) => ({ ...current, isLoading: false }));
+        return;
+      }
+
+      const loadedCase = getCaseById(id);
+      const loadedEvidence = getEvidenceForCase(id);
+      const loadedPacket = getPacketForCase(id);
+
+      setDetail({
+        incidentCase: loadedCase,
+        evidence: loadedEvidence,
+        packet: loadedPacket,
+        score: loadedCase ? calculateEvidenceScore(loadedCase, loadedEvidence) : null,
+        checklist: loadedCase ? getChecklistForCase(loadedCase) : [],
+        isLoading: false,
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [id]);
+
+  const { incidentCase, evidence, packet, score, checklist, isLoading } = detail;
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
+        <Navbar />
+        <section className="mx-auto w-full max-w-7xl px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+          <div className="h-8 w-32 animate-pulse rounded-md" style={{ backgroundColor: "var(--bg-surface)" }} />
+          <div className="mt-8 h-40 animate-pulse rounded-lg border" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }} />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="h-96 animate-pulse rounded-lg border" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }} />
+            <div className="h-96 animate-pulse rounded-lg border" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }} />
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (!incidentCase || !score) {
     return (
@@ -151,7 +224,24 @@ export default function CaseDetailPage() {
 
           <aside className="space-y-6">
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
-              <ScoreBadge score={score.total} label={score.label} color={score.color} showBar />
+              <ScoreBadge total={score.total} label={score.label} color={score.color} showBar />
+            </section>
+
+            <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <div className="flex items-center gap-3">
+                <ClipboardCheck className="h-5 w-5" style={{ color: "var(--accent-green)" }} />
+                <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                  Evidence Checklist
+                </h2>
+              </div>
+              <ul className="mt-5 space-y-3">
+                {checklist.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm leading-6" style={{ color: "var(--text-primary)" }}>
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "var(--border-accent)" }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>

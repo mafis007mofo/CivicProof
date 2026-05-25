@@ -1,7 +1,6 @@
-type ScoreBadgeProps = {
-  score: number;
-  label: "Weak" | "Moderate" | "Strong";
-  color: "red" | "amber" | "green";
+import type { ScoreBreakdown } from "@/lib/evidenceScore";
+
+type ScoreBadgeProps = Pick<ScoreBreakdown, "total" | "label" | "color"> & {
   showBar?: boolean;
 };
 
@@ -11,9 +10,9 @@ const colorMap: Record<ScoreBadgeProps["color"], string> = {
   green: "var(--accent-green)",
 };
 
-export function ScoreBadge({ score, label, color, showBar = false }: ScoreBadgeProps) {
+export function ScoreBadge({ total, label, color, showBar = false }: ScoreBadgeProps) {
   const accentColor = colorMap[color];
-  const clampedScore = Math.max(0, Math.min(100, score));
+  const clampedScore = Math.max(0, Math.min(100, total));
 
   return (
     <div className="flex w-full flex-col items-center gap-3 text-center">
