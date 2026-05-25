@@ -37,55 +37,64 @@ function getChecklistForCase(incidentCase: IncidentCase): string[] {
   return civicIssueChecklist;
 }
 
-type CaseDetailState = {
-  incidentCase: IncidentCase | null;
-  evidence: EvidenceItem[];
-  packet: GeneratedPacket | null;
-  score: ScoreBreakdown | null;
-  checklist: string[];
-  isLoading: boolean;
-};
-
 export default function CaseDetailPage() {
   const rawParams = useParams();
   const rawId = rawParams.id;
   const id = typeof rawId === "string" ? rawId : Array.isArray(rawId) ? rawId[0] ?? "" : "";
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CaseDetailState>({
-    incidentCase: null,
-    evidence: [],
-    packet: null,
-    score: null,
-    checklist: [],
-    isLoading: true,
-  });
+  const [incidentCase, setIncidentCase] = useState<IncidentCase | null>(null);
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
+  const [packet, setPacket] = useState<GeneratedPacket | null>(null);
+  const [scoreBreakdown, setScoreBreakdown] = useState<ScoreBreakdown | null>(null);
+  const [checklist, setChecklist] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    let isActive = true;
+
+    window.queueMicrotask(() => {
+      if (!isActive) {
+        return;
+      }
+
       if (!id) {
-        setDetail((current) => ({ ...current, isLoading: false }));
+        setIncidentCase(null);
+        setEvidence([]);
+        setPacket(null);
+        setScoreBreakdown(null);
+        setChecklist([]);
+        setIsLoading(false);
         return;
       }
 
       const loadedCase = getCaseById(id);
+      if (!loadedCase) {
+        setIncidentCase(null);
+        setEvidence([]);
+        setPacket(null);
+        setScoreBreakdown(null);
+        setChecklist([]);
+        setIsLoading(false);
+        return;
+      }
+
       const loadedEvidence = getEvidenceForCase(id);
       const loadedPacket = getPacketForCase(id);
+      const loadedScoreBreakdown = calculateEvidenceScore(loadedCase, loadedEvidence);
 
-      setDetail({
-        incidentCase: loadedCase,
-        evidence: loadedEvidence,
-        packet: loadedPacket,
-        score: loadedCase ? calculateEvidenceScore(loadedCase, loadedEvidence) : null,
-        checklist: loadedCase ? getChecklistForCase(loadedCase) : [],
-        isLoading: false,
-      });
-    }, 0);
+      setIncidentCase(loadedCase);
+      setEvidence(loadedEvidence);
+      setPacket(loadedPacket);
+      setScoreBreakdown(loadedScoreBreakdown);
+      setChecklist(getChecklistForCase(loadedCase));
+      setIsLoading(false);
+    });
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      isActive = false;
+    };
   }, [id]);
-
-  const { incidentCase, evidence, packet, score, checklist, isLoading } = detail;
 
   if (isLoading) {
     return (
@@ -103,7 +112,7 @@ export default function CaseDetailPage() {
     );
   }
 
-  if (!incidentCase || !score) {
+  if (!incidentCase || !scoreBreakdown) {
     return (
       <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
         <Navbar />
@@ -224,7 +233,7 @@ export default function CaseDetailPage() {
 
           <aside className="space-y-6">
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
-              <ScoreBadge total={score.total} label={score.label} color={score.color} showBar />
+              <ScoreBadge total={scoreBreakdown.total} label={scoreBreakdown.label} color={scoreBreakdown.color} showBar />
             </section>
 
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
