@@ -41,6 +41,7 @@ export default function CaseDetailPage() {
   const rawParams = useParams();
   const rawId = rawParams.id;
   const id = typeof rawId === "string" ? rawId : Array.isArray(rawId) ? rawId[0] ?? "" : "";
+  const hasValidId = id.length > 0;
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [incidentCase, setIncidentCase] = useState<IncidentCase | null>(null);
@@ -58,7 +59,7 @@ export default function CaseDetailPage() {
         return;
       }
 
-      if (!id) {
+      if (!hasValidId) {
         setIncidentCase(null);
         setEvidence([]);
         setPacket(null);
@@ -94,7 +95,7 @@ export default function CaseDetailPage() {
     return () => {
       isActive = false;
     };
-  }, [id]);
+  }, [hasValidId, id]);
 
   if (isLoading) {
     return (
@@ -112,7 +113,7 @@ export default function CaseDetailPage() {
     );
   }
 
-  if (!incidentCase || !scoreBreakdown) {
+  if (!hasValidId || !incidentCase || !scoreBreakdown) {
     return (
       <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
         <Navbar />
