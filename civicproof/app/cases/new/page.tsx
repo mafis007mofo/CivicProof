@@ -77,7 +77,7 @@ export default function NewCasePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [declarationSigned, setDeclarationSigned] = useState(false);
 
-  const updateForm = <K extends keyof FormState>(field: K, value: FormState[K]) => {
+  const updateField = <K extends keyof FormState>(field: K, value: FormState[K]): void => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
@@ -151,7 +151,7 @@ export default function NewCasePage() {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => updateForm("incidentType", option.value)}
+                      onClick={() => updateField("incidentType", option.value)}
                       className="rounded-lg border p-5 text-left transition hover:scale-[1.01]"
                       style={{
                         backgroundColor: selected ? "color-mix(in srgb, var(--accent-green) 10%, var(--bg-primary))" : "var(--bg-primary)",
@@ -176,7 +176,7 @@ export default function NewCasePage() {
                   <Label htmlFor="title" style={{ color: "var(--text-primary)" }}>
                     Title
                   </Label>
-                  <Input id="title" value={form.title} onChange={(event) => updateForm("title", event.target.value)} placeholder="e.g. Pothole damage to my vehicle near Whitefield" className="mt-2" />
+                  <Input id="title" value={form.title} onChange={(event) => updateField("title", event.target.value)} placeholder="e.g. Pothole damage to my vehicle near Whitefield" className="mt-2" />
                   {errors.title ? <p className="mt-2 text-sm" style={{ color: "var(--accent-red)" }}>{errors.title}</p> : null}
                 </div>
 
@@ -186,7 +186,7 @@ export default function NewCasePage() {
                   </Label>
                   <div className="relative mt-2">
                     <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
-                    <Input id="location" value={form.location} onChange={(event) => updateForm("location", event.target.value)} placeholder="Area, City, State" className="pl-9" />
+                    <Input id="location" value={form.location} onChange={(event) => updateField("location", event.target.value)} placeholder="Area, City, State" className="pl-9" />
                   </div>
                   {errors.location ? <p className="mt-2 text-sm" style={{ color: "var(--accent-red)" }}>{errors.location}</p> : null}
                 </div>
@@ -196,14 +196,14 @@ export default function NewCasePage() {
                     <Label htmlFor="incidentDate" style={{ color: "var(--text-primary)" }}>
                       Date
                     </Label>
-                    <Input id="incidentDate" type="date" value={form.incidentDate} onChange={(event) => updateForm("incidentDate", event.target.value)} className="mt-2" />
+                    <Input id="incidentDate" type="date" value={form.incidentDate} onChange={(event) => updateField("incidentDate", event.target.value)} className="mt-2" />
                     {errors.incidentDate ? <p className="mt-2 text-sm" style={{ color: "var(--accent-red)" }}>{errors.incidentDate}</p> : null}
                   </div>
                   <div>
                     <Label htmlFor="incidentTime" style={{ color: "var(--text-primary)" }}>
                       Time
                     </Label>
-                    <Input id="incidentTime" type="time" value={form.incidentTime} onChange={(event) => updateForm("incidentTime", event.target.value)} className="mt-2" />
+                    <Input id="incidentTime" type="time" value={form.incidentTime} onChange={(event) => updateField("incidentTime", event.target.value)} className="mt-2" />
                   </div>
                 </div>
 
@@ -211,7 +211,7 @@ export default function NewCasePage() {
                   <Label htmlFor="description" style={{ color: "var(--text-primary)" }}>
                     Description
                   </Label>
-                  <Textarea id="description" rows={6} value={form.description} onChange={(event) => updateForm("description", event.target.value)} placeholder="Describe what happened in detail - include what you saw, any damage, approximate times, and relevant observations" className="mt-2 resize-none" />
+                  <Textarea id="description" rows={6} value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder="Describe what happened in detail - include what you saw, any damage, approximate times, and relevant observations" className="mt-2 resize-none" />
                   <div className="mt-2 flex items-center justify-between gap-3">
                     {errors.description ? <p className="text-sm" style={{ color: "var(--accent-red)" }}>{errors.description}</p> : <span />}
                     <p className="text-sm" style={{ color: form.description.length > 80 ? "var(--accent-green)" : "var(--text-muted)" }}>
