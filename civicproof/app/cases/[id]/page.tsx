@@ -4,14 +4,12 @@ import { StatusBadge } from "@/components/cases/StatusBadge";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import civicIssueChecklist from "@/data/checklists/civic-issue-checklist.json";
-import potholeDamageChecklist from "@/data/checklists/pothole-damage-checklist.json";
-import roadAccidentChecklist from "@/data/checklists/road-accident-checklist.json";
+import { getChecklistForCase } from "@/lib/checklists";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
 import { getCaseById, getEvidenceForCase, getPacketForCase } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
-import { ArrowLeft, CheckCircle2, ClipboardCheck, FileText, ImageIcon, Upload, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, ImageIcon, Upload, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -24,17 +22,22 @@ function trustLabelText(item: EvidenceItem): string {
   return item.trustLabel?.replaceAll("_", " ") ?? "unlabeled";
 }
 
-function getChecklistForCase(incidentCase: IncidentCase): string[] {
-  if (incidentCase.incidentType === "road_accident") {
-    return roadAccidentChecklist;
-  }
+function getChecklistKeywords(item: string): string[] {
+  const stopWords = new Set(["the", "and", "with", "from", "showing", "details", "photo", "photos", "photograph"]);
+  return item
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !stopWords.has(word));
+}
 
-  const searchableText = `${incidentCase.title} ${incidentCase.description}`.toLowerCase();
-  if (searchableText.includes("pothole")) {
-    return potholeDamageChecklist;
-  }
+function isChecklistItemCovered(item: string, evidence: EvidenceItem[]): boolean {
+  const keywords = getChecklistKeywords(item);
 
-  return civicIssueChecklist;
+  return evidence.some((evidenceItem) => {
+    const searchableText = `${evidenceItem.fileName} ${evidenceItem.note ?? ""}`.toLowerCase();
+    return keywords.some((keyword) => searchableText.includes(keyword));
+  });
 }
 
 export default function CaseDetailPage() {
@@ -88,7 +91,7 @@ export default function CaseDetailPage() {
       setEvidence(loadedEvidence);
       setPacket(loadedPacket);
       setScoreBreakdown(loadedScoreBreakdown);
-      setChecklist(getChecklistForCase(loadedCase));
+      setChecklist(getChecklistForCase(loadedCase.incidentType));
       setIsLoading(false);
     });
 
@@ -240,17 +243,34 @@ export default function CaseDetailPage() {
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <div className="flex items-center gap-3">
                 <ClipboardCheck className="h-5 w-5" style={{ color: "var(--accent-green)" }} />
-                <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-                  Evidence Checklist
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                    Evidence Checklist
+                  </h2>
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                    Items your case should include
+                  </p>
+                </div>
               </div>
-              <ul className="mt-5 space-y-3">
-                {checklist.map((item) => (
-                  <li key={item} className="flex gap-3 text-sm leading-6" style={{ color: "var(--text-primary)" }}>
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "var(--border-accent)" }} />
-                    {item}
-                  </li>
-                ))}
+              <ul className="mt-5">
+                {checklist.map((item) => {
+                  const isCovered = isChecklistItemCovered(item, evidence);
+
+                  return (
+                    <li
+                      key={item}
+                      className="flex gap-3 border-b py-3 text-sm leading-6 last:border-b-0"
+                      style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}
+                    >
+                      {isCovered ? (
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--accent-green)" }} />
+                      ) : (
+                        <Circle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--accent-amber)" }} />
+                      )}
+                      <span>{item}</span>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
 
