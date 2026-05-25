@@ -161,7 +161,7 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-4 rounded-md border px-4 py-3 text-sm" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 35%, transparent)", color: "var(--accent-amber)" }}>
-              {DEMO_PACKET.missingEvidence.length} items missing from evidence
+              {DEMO_PACKET.missingEvidence.length} items missing from evidence checklist
             </div>
           </div>
         </div>
