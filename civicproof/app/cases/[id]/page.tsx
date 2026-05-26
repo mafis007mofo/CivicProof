@@ -5,13 +5,14 @@ import { EvidenceCard } from "@/components/evidence/EvidenceCard";
 import { EvidenceUpload } from "@/components/evidence/EvidenceUpload";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
 import Navbar from "@/components/layout/Navbar";
+import { PacketPreview } from "@/components/PacketPreview";
 import { Button } from "@/components/ui/button";
 import { getChecklistForCase } from "@/lib/checklists";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
-import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence } from "@/lib/localStorage";
+import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence, savePacket, updateCase } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
-import { ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, Lock, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, Loader2, Lock, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -44,13 +45,15 @@ export default function CaseDetailPage() {
   const id = typeof rawId === "string" ? rawId : Array.isArray(rawId) ? rawId[0] ?? "" : "";
   const hasValidId = id.length > 0;
   const router = useRouter();
-  const [notice, setNotice] = useState<string | null>(null);
   const [incidentCase, setIncidentCase] = useState<IncidentCase | null>(null);
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [packet, setPacket] = useState<GeneratedPacket | null>(null);
   const [scoreBreakdown, setScoreBreakdown] = useState<ScoreBreakdown | null>(null);
   const [checklist, setChecklist] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationNotice, setGenerationNotice] = useState<string | null>(null);
   const sessionObjectUrls = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -179,6 +182,56 @@ export default function CaseDetailPage() {
     updateEvidenceState(evidence.filter((item) => item.id !== evidenceId));
   };
 
+  const generateButtonBlockedReason =
+    evidence.length === 0 ? "Add evidence first" : !incidentCase.declarationSigned ? "Declaration required" : null;
+  const generateButtonTitle = isGenerating ? "Analyzing evidence..." : generateButtonBlockedReason ?? undefined;
+  const canGeneratePacket = !generateButtonBlockedReason && !isGenerating;
+
+  const handleGeneratePacket = async () => {
+    if (isDemo) {
+      setPacket(packet);
+      return;
+    }
+
+    if (!canGeneratePacket) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+    setGenerationNotice(null);
+
+    try {
+      const response = await fetch("/api/generate-packet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case: incidentCase, evidence, checklist: getChecklistForCase(incidentCase.incidentType) }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to generate packet.");
+      }
+
+      const result = (await response.json()) as { packet?: GeneratedPacket; fallback?: boolean; error?: string };
+      if (!result.packet) {
+        throw new Error(result.error ?? "Unable to generate packet.");
+      }
+
+      savePacket(result.packet);
+      setPacket(result.packet);
+      updateCase(incidentCase.id, { status: "packet_generated" });
+      setIncidentCase({ ...incidentCase, status: "packet_generated", updatedAt: new Date().toISOString() });
+
+      if (result.fallback) {
+        setGenerationNotice("AI generation unavailable - showing template packet");
+      }
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "Unable to generate packet.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
       <Navbar />
@@ -248,22 +301,34 @@ export default function CaseDetailPage() {
               <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
                 Packet Generation
               </h2>
-              {/* TODO: Day 2 - implement real packet generation */}
               <Button
                 type="button"
+                disabled={!canGeneratePacket && !isDemo}
+                title={generateButtonTitle}
                 className="mt-5 w-full sm:w-auto"
-                onClick={() => setNotice(isDemo && packet ? packet.incidentSummary : "Coming soon in the next update.")}
-                style={{ backgroundColor: "var(--accent-green)", color: "var(--bg-primary)" }}
+                onClick={handleGeneratePacket}
+                style={{ backgroundColor: canGeneratePacket || isDemo ? "var(--accent-green)" : "var(--bg-elevated)", color: canGeneratePacket || isDemo ? "var(--bg-primary)" : "var(--text-muted)" }}
               >
-                <Zap className="mr-2 h-4 w-4" />
-                Generate Packet
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                {isGenerating ? "Analyzing evidence..." : "Generate Packet"}
               </Button>
-              {notice ? (
+              {generateButtonBlockedReason && !isDemo ? (
+                <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>{generateButtonBlockedReason}</p>
+              ) : null}
+              {generationNotice ? (
+                <p className="mt-4 flex gap-3 rounded-lg border p-4 text-sm leading-6" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 35%, transparent)", color: "var(--accent-amber)" }}>
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  {generationNotice}
+                </p>
+              ) : null}
+              {generationError ? (
                 <p className="mt-4 rounded-lg border p-4 text-sm leading-6" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)", color: "var(--text-muted)" }}>
-                  {notice}
+                  {generationError}
                 </p>
               ) : null}
             </div>
+
+            {packet ? <PacketPreview packet={packet} caseTitle={incidentCase.title} /> : null}
           </section>
 
           <aside className="space-y-6">
