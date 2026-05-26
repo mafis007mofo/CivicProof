@@ -3,6 +3,7 @@
 import { DEMO_PACKET } from "@/lib/demoCase";
 import Navbar from "@/components/layout/Navbar";
 import { AlertTriangle, Car, CheckCircle2, Clock, Download, FileX, MapPin, Upload, Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 const problemCards = [
@@ -97,14 +98,14 @@ export default function Home() {
           <div className="mt-9 flex animate-fade-in-up flex-col gap-3 opacity-0 sm:flex-row" style={{ animationDelay: "300ms" }}>
             <Link
               href="/cases/new"
-              className="rounded-md px-6 py-4 text-center text-sm font-bold transition hover:scale-[1.02]"
+              className="interactive-glow rounded-md px-6 py-4 text-center text-sm font-bold"
               style={{ backgroundColor: "var(--accent-green)", color: "var(--bg-primary)" }}
             >
               Create Incident Packet
             </Link>
             <Link
               href="/dashboard"
-              className="rounded-md border px-6 py-4 text-center text-sm font-bold transition hover:scale-[1.02]"
+              className="interactive-glow rounded-md border px-6 py-4 text-center text-sm font-bold"
               style={{
                 backgroundColor: "color-mix(in srgb, var(--bg-surface) 72%, transparent)",
                 borderColor: "var(--border-subtle)",
@@ -284,7 +285,7 @@ export default function Home() {
           <h2 className="text-4xl font-bold" style={{ color: "var(--text-primary)" }}>
             Ready to document your incident?
           </h2>
-          <Link href="/cases/new" className="mt-7 inline-flex rounded-md px-6 py-4 text-sm font-bold transition hover:scale-[1.02]" style={{ backgroundColor: "var(--accent-green)", color: "var(--bg-primary)" }}>
+          <Link href="/cases/new" className="interactive-glow mt-7 inline-flex rounded-md px-6 py-4 text-sm font-bold" style={{ backgroundColor: "var(--accent-green)", color: "var(--bg-primary)" }}>
             Create Incident Packet
           </Link>
         </div>
@@ -292,9 +293,9 @@ export default function Home() {
 
       <footer className="border-t px-4 py-10 sm:px-6 lg:px-8" style={{ borderColor: 'rgba(34,197,94,0.15)' }}>
         <div className="mx-auto max-w-7xl">
-          <p className="font-heading text-xl font-bold" style={{ color: "var(--text-primary)" }}>
-            CivicProof
-          </p>
+          <div className="brand-plate inline-grid h-12 w-[190px] place-items-center overflow-hidden rounded-md px-3">
+            <Image src="/logo.png" alt="CivicProof" width={190} height={52} className="h-9 w-auto object-contain" />
+          </div>
           <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
             Evidence to action for civic complaints and road incidents.
           </p>
