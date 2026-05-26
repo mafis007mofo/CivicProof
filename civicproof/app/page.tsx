@@ -1,13 +1,9 @@
+"use client";
+
 import { DEMO_PACKET } from "@/lib/demoCase";
-import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
 import { AlertTriangle, Car, CheckCircle2, Clock, Download, FileX, MapPin, Upload, Zap } from "lucide-react";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "CivicProof - Turn Evidence into Action",
-  description: "Create official-ready action packets from civic complaint and road incident evidence.",
-};
 
 const problemCards = [
   {
@@ -146,14 +142,14 @@ export default function Home() {
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div className="flex flex-col items-center justify-center rounded-md border p-3" style={{ backgroundColor: "var(--bg-elevated)", borderColor: "var(--border-subtle)" }}>
-                <svg width="220" height="110" viewBox="0 0 220 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M 55 55 C 55 30, 110 30, 110 55" stroke="var(--accent-green)" strokeWidth="1.5" strokeOpacity="0.5" fill="none" />
-                  <path d="M 165 55 C 165 30, 110 30, 110 55" stroke="var(--accent-green)" strokeWidth="1.5" strokeOpacity="0.5" fill="none" />
-                  <circle cx="55" cy="55" r="18" stroke="var(--text-muted)" strokeWidth="1.5" fill="none" />
-                  <circle cx="110" cy="55" r="22" stroke="var(--accent-green)" strokeWidth="2" fill="none" />
-                  <circle cx="165" cy="55" r="18" stroke="var(--text-muted)" strokeWidth="1.5" fill="none" />
+                <svg width="220" height="110" viewBox="0 0 220 110">
+                  <path d="M 55 55 C 55 30 110 30 110 55" stroke="rgba(34,197,94,0.5)" strokeWidth="1.5" fill="none" />
+                  <path d="M 110 55 C 110 30 165 30 165 55" stroke="rgba(34,197,94,0.5)" strokeWidth="1.5" fill="none" />
+                  <circle cx="55" cy="55" r="18" fill="rgba(15,25,35,0.8)" stroke="rgba(100,116,139,0.4)" strokeWidth="1" />
+                  <circle cx="110" cy="55" r="22" fill="rgba(15,25,35,0.8)" stroke="rgba(34,197,94,0.6)" strokeWidth="1.5" />
+                  <circle cx="165" cy="55" r="18" fill="rgba(15,25,35,0.8)" stroke="rgba(100,116,139,0.4)" strokeWidth="1" />
                 </svg>
-                <p className="mt-1 text-center font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>Evidence Map</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '8px', textAlign: 'center' }}>Evidence Map</p>
               </div>
               <div className="aspect-[4/3] rounded-md border" style={{ backgroundColor: "var(--bg-elevated)", borderColor: "var(--border-subtle)" }} />
             </div>
@@ -178,8 +174,8 @@ export default function Home() {
       </section>
 
       {/* Animated divider */}
-      <div className="relative h-px w-full overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent)', animation: 'expandWidth 1.5s ease forwards' }} />
+      <div className="relative h-px w-full overflow-hidden my-0">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(34,197,94,0.35) 50%, transparent 100%)', animation: 'expandWidth 1.5s ease forwards' }} />
       </div>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
@@ -195,8 +191,10 @@ export default function Home() {
           {problemCards.map((card) => (
             <article
               key={card.title}
-              className="rounded-lg border p-6 transition hover:-translate-y-1 hover:scale-[1.01]"
-              style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)", borderTop: '2px solid rgba(245,158,11,0.35)' }}
+              className="rounded-lg border p-6"
+              style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)", borderTop: '2px solid rgba(245,158,11,0.3)', transition: 'transform 0.2s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)' }}
             >
               <card.icon className="h-7 w-7" style={{ color: "var(--accent-blue)" }} />
               <h3 className="mt-5 text-xl font-bold" style={{ color: "var(--text-primary)" }}>
@@ -242,7 +240,9 @@ export default function Home() {
         <div className="mt-10 grid gap-5 lg:grid-cols-2">
           {useCases.map((useCase) => (
             <article key={useCase.title} className="relative overflow-hidden rounded-lg border p-7" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
-              <useCase.icon className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24" style={{ color: "var(--text-primary)", opacity: 0.04 }} />
+              <div className="absolute bottom-3 right-3 pointer-events-none opacity-[0.04]">
+                <useCase.icon size={80} />
+              </div>
               <useCase.icon className="h-8 w-8" style={{ color: "var(--accent-green)" }} />
               <h3 className="mt-5 text-3xl font-bold" style={{ color: "var(--text-primary)" }}>
                 {useCase.title}

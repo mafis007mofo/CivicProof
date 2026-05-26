@@ -254,10 +254,9 @@ export default function CaseDetailPage() {
             {incidentCase.location} - {incidentCase.incidentDate}
             {incidentCase.incidentTime ? ` at ${incidentCase.incidentTime}` : ""}
           </p>
-          {(() => {
-            const WatermarkIcon = incidentCase.incidentType === "road_accident" ? Car : MapPin;
-            return <WatermarkIcon className="pointer-events-none absolute -bottom-4 -right-4 h-[120px] w-[120px]" style={{ color: "var(--text-primary)", opacity: 0.03 }} />;
-          })()}
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-[0.03]">
+            {incidentCase.incidentType === 'road_accident' ? <Car size={120} /> : <MapPin size={120} />}
+          </div>
         </header>
 
         <div className="mt-10">
