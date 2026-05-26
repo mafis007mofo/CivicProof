@@ -1,6 +1,7 @@
 "use client";
 
 import { generateId, saveEvidence } from "@/lib/localStorage";
+import { assignTrustLabel } from "@/lib/trustAnalysis";
 import type { EvidenceItem, FileType } from "@/types";
 import { FileUp, Loader2, Upload } from "lucide-react";
 import type { DragEvent } from "react";
@@ -97,13 +98,14 @@ export function EvidenceUpload({ caseId, onUpload }: EvidenceUploadProps) {
           fileUrl: URL.createObjectURL(file),
           fileSize: file.size,
           note: note.trim() || undefined,
-          trustLabel: "user_provided",
           sha256Hash: bytesToHex(hashBuffer),
           uploadedAt: new Date().toISOString(),
         };
+        const trustLabel = assignTrustLabel(file, item);
+        const itemWithTrust: EvidenceItem = { ...item, trustLabel };
 
-        saveEvidence(item);
-        onUpload(item);
+        saveEvidence(itemWithTrust);
+        onUpload(itemWithTrust);
         setUploadedCount((current) => current + 1);
         setUploadedBytes((current) => current + file.size);
       } catch {

@@ -7,6 +7,7 @@ import { EvidenceUpload } from "@/components/evidence/EvidenceUpload";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
 import Navbar from "@/components/layout/Navbar";
 import { PacketPreview } from "@/components/PacketPreview";
+import { TrustPanel } from "@/components/trust/TrustPanel";
 import { Button } from "@/components/ui/button";
 import { getChecklistForCase } from "@/lib/checklists";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
@@ -187,6 +188,8 @@ export default function CaseDetailPage() {
     evidence.length === 0 ? "Add evidence first" : !incidentCase.declarationSigned ? "Declaration required" : null;
   const generateButtonTitle = isGenerating ? "Analyzing evidence..." : generateButtonBlockedReason ?? undefined;
   const canGeneratePacket = !generateButtonBlockedReason && !isGenerating;
+  const totalSizeBytes = evidence.reduce((sum, item) => sum + (item.fileSize ?? 0), 0);
+  const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(1);
 
   const handleGeneratePacket = async () => {
     if (isDemo) {
@@ -271,7 +274,7 @@ export default function CaseDetailPage() {
                   Evidence
                 </h2>
                 <p className="font-mono text-xs uppercase" style={{ color: "var(--text-muted)" }}>
-                  {evidence.length} files · {(evidence.reduce((sum, e) => sum + (e.fileSize ?? 0), 0) / (1024 * 1024)).toFixed(1)} MB
+                  {evidence.length} file{evidence.length !== 1 ? "s" : ""} - {totalSizeMB} MB
                 </p>
               </div>
 
@@ -308,6 +311,20 @@ export default function CaseDetailPage() {
               )}
             </div>
 
+            {evidence.length > 0 ? (
+              <div className="rounded-lg border p-5 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+                <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                  Evidence Trust Analysis
+                </h2>
+                <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                  Automated metadata assessment - not a verification of authenticity
+                </p>
+                <div className="mt-5">
+                  <TrustPanel evidence={evidence} />
+                </div>
+              </div>
+            ) : null}
+
             <div className="rounded-lg border p-5 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
                 Packet Generation
@@ -341,7 +358,7 @@ export default function CaseDetailPage() {
 
             {packet ? (
               <div id="packet-preview">
-                <PacketPreview packet={packet} caseTitle={incidentCase.title} />
+                <PacketPreview packet={packet} caseTitle={incidentCase.title} evidence={evidence} />
               </div>
             ) : null}
           </section>
@@ -349,6 +366,9 @@ export default function CaseDetailPage() {
           <aside className="space-y-6">
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <ScoreBadge total={scoreBreakdown.total} label={scoreBreakdown.label} color={scoreBreakdown.color} showBar />
+              <p className="mb-2 mt-5 text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                Score Breakdown
+              </p>
               <div className="mt-5 space-y-2">
                 {scoreBreakdown.breakdown.map((item) => (
                   <div key={item.criterion} className="flex items-center justify-between gap-2 text-sm">

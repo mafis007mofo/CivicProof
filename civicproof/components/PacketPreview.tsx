@@ -1,6 +1,7 @@
 "use client";
 
-import type { ClaimStatus, GeneratedPacket } from "@/types";
+import { getOverallTrustScore } from "@/lib/trustAnalysis";
+import type { ClaimStatus, EvidenceItem, GeneratedPacket } from "@/types";
 import {
   AlertCircle,
   AlertTriangle,
@@ -15,6 +16,7 @@ import { useEffect, useState } from "react";
 type PacketPreviewProps = {
   packet: GeneratedPacket;
   caseTitle: string;
+  evidence: EvidenceItem[];
 };
 
 const statusColorMap: Record<ClaimStatus, string> = {
@@ -41,19 +43,19 @@ function formatGeneratedDate(value: string): string {
   }).format(new Date(value));
 }
 
-function formatShortDate(value: string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
 function statusLabel(status: ClaimStatus): string {
-  return status.replaceAll("_", " ");
+  if (status === "supported_by_user_evidence") {
+    return "Supported";
+  }
+
+  if (status === "missing") {
+    return "Missing";
+  }
+
+  return "Unverified";
 }
 
-export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
+export function PacketPreview({ packet, caseTitle, evidence }: PacketPreviewProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [scoreCount, setScoreCount] = useState(0);
@@ -85,6 +87,7 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
     { id: "complaint", title: "Complaint Draft", value: packet.complaintDraft },
     { id: "civic", title: "Civic/Insurance Draft", value: packet.claimOrCivicDraft },
   ];
+  const trustScore = getOverallTrustScore(evidence);
 
   return (
     <section className="max-h-[80vh] space-y-6 overflow-y-auto rounded-lg border p-4 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
@@ -105,8 +108,11 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>{packet.caseId}</p>
-            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>{formatShortDate(packet.generatedAt)}</p>
+            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>Case ID: {packet.caseId}</p>
+            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>Generated: {formatGeneratedDate(packet.generatedAt)}</p>
+            <p className="mt-1 font-mono text-xs" style={{ color: trustScore.color }}>
+              Evidence Trust: {trustScore.score}/100 - {trustScore.label}
+            </p>
           </div>
         </div>
       </div>
@@ -329,6 +335,9 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
       {/* Disclaimer */}
       <section className="rounded-lg border p-4 text-xs leading-6" style={{ backgroundColor: "color-mix(in srgb, var(--accent-red) 7%, transparent)", borderColor: "color-mix(in srgb, var(--accent-red) 35%, transparent)", color: "var(--text-muted)" }}>
         {packet.disclaimer}
+        <br />
+        Evidence trust labels are based on file metadata analysis only. CivicProof cannot verify whether files are
+        authentic, AI-generated, or manipulated. All labels reflect technical file properties, not legal authenticity.
       </section>
     </section>
   );
