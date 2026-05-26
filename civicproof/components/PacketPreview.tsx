@@ -1,7 +1,16 @@
 "use client";
 
 import type { ClaimStatus, GeneratedPacket } from "@/types";
-import { AlertTriangle, CheckSquare, Copy, Download } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  Download,
+  Shield,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 type PacketPreviewProps = {
   packet: GeneratedPacket;
@@ -15,6 +24,13 @@ const statusColorMap: Record<ClaimStatus, string> = {
   not_independently_verified: "var(--accent-amber)",
 };
 
+const statusIconMap: Record<ClaimStatus, typeof CheckCircle2> = {
+  supported_by_user_evidence: CheckCircle2,
+  user_statement_only: AlertCircle,
+  missing: XCircle,
+  not_independently_verified: AlertCircle,
+};
+
 function formatGeneratedDate(value: string): string {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
@@ -25,17 +41,78 @@ function formatGeneratedDate(value: string): string {
   }).format(new Date(value));
 }
 
+function formatShortDate(value: string): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 function statusLabel(status: ClaimStatus): string {
   return status.replaceAll("_", " ");
 }
 
-function copyText(value: string): void {
-  void navigator.clipboard?.writeText(value);
-}
-
 export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [scoreCount, setScoreCount] = useState(0);
+
+  const handleCopy = (id: string, text: string) => {
+    void navigator.clipboard?.writeText(text);
+    setCopiedSection(id);
+    setTimeout(() => setCopiedSection(null), 2000);
+  };
+
+  const toggleChecked = (item: string) => {
+    setCheckedItems((prev) => ({ ...prev, [item]: !prev[item] }));
+  };
+
+  useEffect(() => {
+    const target = packet.evidenceStrengthScore;
+    const steps = 40;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current = Math.min(current + increment, target);
+      setScoreCount(Math.floor(current));
+      if (current >= target) clearInterval(timer);
+    }, 1200 / steps);
+    return () => clearInterval(timer);
+  }, [packet.evidenceStrengthScore]);
+
+  const draftSections = [
+    { id: "complaint", title: "Complaint Draft", value: packet.complaintDraft },
+    { id: "civic", title: "Civic/Insurance Draft", value: packet.claimOrCivicDraft },
+  ];
+
   return (
     <section className="max-h-[80vh] space-y-6 overflow-y-auto rounded-lg border p-4 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+      {/* Official document header */}
+      <div
+        className="rounded-lg border-l-4 p-4"
+        style={{
+          backgroundColor: "var(--bg-primary)",
+          borderLeftColor: "var(--accent-green)",
+        }}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Shield className="h-[18px] w-[18px] shrink-0" style={{ color: "var(--accent-green)" }} />
+            <div>
+              <span className="font-heading text-lg font-bold" style={{ color: "var(--text-primary)" }}>CivicProof</span>
+              <span className="ml-2 text-sm" style={{ color: "var(--text-muted)" }}>Evidence Action Packet</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>{packet.caseId}</p>
+            <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>{formatShortDate(packet.generatedAt)}</p>
+          </div>
+        </div>
+      </div>
+      <div className="h-px w-full" style={{ backgroundColor: "color-mix(in srgb, var(--accent-green) 30%, transparent)" }} />
+
+      {/* Header with score */}
       <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: "var(--border-subtle)" }}>
         <div>
           <p className="font-mono text-xs uppercase" style={{ color: "var(--accent-green)" }}>
@@ -50,7 +127,7 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span className="rounded-full border px-3 py-1 font-mono text-sm font-semibold" style={{ backgroundColor: "color-mix(in srgb, var(--accent-green) 12%, transparent)", borderColor: "color-mix(in srgb, var(--accent-green) 42%, transparent)", color: "var(--accent-green)" }}>
-            {packet.evidenceStrengthScore}/100
+            {scoreCount}/100
           </span>
           <button
             type="button"
@@ -65,11 +142,13 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
         </div>
       </header>
 
+      {/* Incident Summary */}
       <section className="rounded-lg border p-4" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
         <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Incident Summary</h3>
         <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-muted)" }}>{packet.incidentSummary}</p>
       </section>
 
+      {/* Timeline */}
       <section>
         <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Timeline</h3>
         <div className="mt-4 space-y-0">
@@ -86,6 +165,7 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
         </div>
       </section>
 
+      {/* Evidence Table */}
       <section>
         <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Evidence Table</h3>
         <div className="mt-4 overflow-x-auto rounded-lg border" style={{ borderColor: "var(--border-subtle)" }}>
@@ -100,7 +180,7 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
             </thead>
             <tbody>
               {packet.evidenceTable.map((row, index) => (
-                <tr key={`${row.evidenceName}-${row.relevance}`} style={{ backgroundColor: index % 2 === 0 ? "var(--bg-surface)" : "var(--bg-elevated)", color: "var(--text-muted)" }}>
+                <tr key={`${row.evidenceName}-${row.relevance}`} className="transition-colors hover:!bg-[var(--bg-elevated)]" style={{ backgroundColor: index % 2 === 0 ? "var(--bg-surface)" : "var(--bg-elevated)", color: "var(--text-muted)" }}>
                   <td className="px-4 py-3 font-mono">{row.evidenceName}</td>
                   <td className="px-4 py-3">{row.type}</td>
                   <td className="px-4 py-3">{row.relevance}</td>
@@ -112,6 +192,7 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
         </div>
       </section>
 
+      {/* Claim vs Evidence Map */}
       <section>
         <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Claim vs Evidence Map</h3>
         <div className="mt-4 overflow-x-auto rounded-lg border" style={{ borderColor: "var(--border-subtle)" }}>
@@ -126,12 +207,14 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
             <tbody>
               {packet.claimEvidenceMap.map((row, index) => {
                 const statusColor = statusColorMap[row.status];
+                const StatusIcon = statusIconMap[row.status];
                 return (
-                  <tr key={`${row.claim}-${row.status}`} style={{ backgroundColor: index % 2 === 0 ? "var(--bg-surface)" : "var(--bg-elevated)", color: "var(--text-muted)" }}>
+                  <tr key={`${row.claim}-${row.status}`} className="transition-colors hover:!bg-[var(--bg-elevated)]" style={{ backgroundColor: index % 2 === 0 ? "var(--bg-surface)" : "var(--bg-elevated)", color: "var(--text-muted)" }}>
                     <td className="px-4 py-3">{row.claim}</td>
                     <td className="px-4 py-3">{row.supportingEvidence.length > 0 ? row.supportingEvidence.join(", ") : "not provided"}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full border px-2 py-1 text-xs font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${statusColor} 12%, transparent)`, borderColor: `color-mix(in srgb, ${statusColor} 42%, transparent)`, color: statusColor }}>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${statusColor} 12%, transparent)`, borderColor: `color-mix(in srgb, ${statusColor} 42%, transparent)`, color: statusColor }}>
+                        <StatusIcon className="h-3 w-3" />
                         {statusLabel(row.status)}
                       </span>
                     </td>
@@ -143,45 +226,107 @@ export function PacketPreview({ packet, caseTitle }: PacketPreviewProps) {
         </div>
       </section>
 
+      {/* Missing Evidence — numbered + copy all */}
       <section className="rounded-lg border p-4" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 8%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 35%, transparent)" }}>
-        <h3 className="flex items-center gap-2 text-xl font-bold" style={{ color: "var(--accent-amber)" }}>
-          <AlertTriangle className="h-5 w-5" />
-          Missing Evidence
-        </h3>
-        <ul className="mt-3 space-y-2">
-          {packet.missingEvidence.map((item) => (
-            <li key={item} className="text-sm leading-6" style={{ color: "var(--text-primary)" }}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      {[
-        { title: "Complaint Draft", value: packet.complaintDraft },
-        { title: "Civic/Insurance Draft", value: packet.claimOrCivicDraft },
-      ].map((section) => (
-        <section key={section.title} className="rounded-lg border p-4" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{section.title}</h3>
-            <button type="button" aria-label={`Copy ${section.title}`} onClick={() => copyText(section.value)} className="rounded-md border p-2" style={{ borderColor: "var(--border-subtle)", color: "var(--text-muted)" }}>
-              <Copy className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="mt-4 whitespace-pre-wrap break-words font-mono text-sm leading-7" style={{ color: "var(--text-muted)" }}>{section.value}</p>
-        </section>
-      ))}
-
-      <section>
-        <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Follow-up Checklist</h3>
-        <ul className="mt-3 divide-y rounded-lg border" style={{ borderColor: "var(--border-subtle)" }}>
-          {packet.followUpChecklist.map((item) => (
-            <li key={item} className="flex gap-3 p-3 text-sm" style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}>
-              <CheckSquare className="h-4 w-4 shrink-0" style={{ color: "var(--text-muted)" }} />
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-xl font-bold" style={{ color: "var(--accent-amber)" }}>
+            <AlertTriangle className="h-5 w-5" />
+            Missing Evidence
+          </h3>
+          <button
+            type="button"
+            onClick={() => handleCopy("missing", packet.missingEvidence.map((item, i) => `${i + 1}. ${item}`).join("\n"))}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition"
+            style={{ borderColor: "color-mix(in srgb, var(--accent-amber) 42%, transparent)", color: "var(--accent-amber)" }}
+          >
+            <Copy className="h-3 w-3" />
+            {copiedSection === "missing" ? "Copied!" : "Copy Checklist"}
+          </button>
+        </div>
+        <ol className="mt-3 space-y-2">
+          {packet.missingEvidence.map((item, index) => (
+            <li key={item} className="flex items-start gap-3 text-sm leading-6" style={{ color: "var(--text-primary)" }}>
+              <span
+                className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold"
+                style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 22%, transparent)", color: "var(--accent-amber)" }}
+              >
+                {index + 1}
+              </span>
               {item}
             </li>
           ))}
+        </ol>
+      </section>
+
+      {/* Draft sections with line numbers + copy feedback */}
+      {draftSections.map((section) => {
+        const lines = section.value.split("\n");
+        return (
+          <section key={section.id} className="rounded-lg border p-4" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{section.title}</h3>
+              <button
+                type="button"
+                aria-label={`Copy ${section.title}`}
+                onClick={() => handleCopy(section.id, section.value)}
+                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition"
+                style={{ borderColor: "var(--border-subtle)", color: copiedSection === section.id ? "var(--accent-green)" : "var(--text-muted)" }}
+              >
+                <Copy className="h-3 w-3" />
+                {copiedSection === section.id ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <div className="mt-4 rounded-md border" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              {lines.map((line, lineIndex) => (
+                <div key={`${section.id}-line-${lineIndex}`} className="flex border-b last:border-b-0" style={{ borderColor: "var(--border-subtle)" }}>
+                  <span
+                    className="w-8 shrink-0 select-none py-1.5 pr-2 text-right font-mono text-[11px]"
+                    style={{ color: "var(--text-muted)", opacity: 0.5 }}
+                  >
+                    {lineIndex + 1}
+                  </span>
+                  <span className="flex-1 whitespace-pre-wrap break-words py-1.5 pl-3 font-mono text-sm leading-7" style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border-subtle)" }}>
+                    {line || "\u00A0"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* Follow-up Checklist — interactive strikethrough */}
+      <section>
+        <h3 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Follow-up Checklist</h3>
+        <ul className="mt-3 divide-y rounded-lg border" style={{ borderColor: "var(--border-subtle)" }}>
+          {packet.followUpChecklist.map((item) => {
+            const isChecked = checkedItems[item] ?? false;
+            return (
+              <li key={item} style={{ borderColor: "var(--border-subtle)" }}>
+                <button
+                  type="button"
+                  onClick={() => toggleChecked(item)}
+                  className="flex w-full gap-3 p-3 text-left text-sm transition-colors"
+                  style={{ color: isChecked ? "var(--text-muted)" : "var(--text-primary)" }}
+                >
+                  <span
+                    className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border"
+                    style={{
+                      backgroundColor: isChecked ? "var(--accent-green)" : "transparent",
+                      borderColor: isChecked ? "var(--accent-green)" : "var(--border-subtle)",
+                    }}
+                  >
+                    {isChecked ? <CheckCircle2 className="h-3 w-3" style={{ color: "var(--bg-primary)" }} /> : null}
+                  </span>
+                  <span style={{ textDecoration: isChecked ? "line-through" : "none" }}>{item}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
+      {/* Disclaimer */}
       <section className="rounded-lg border p-4 text-xs leading-6" style={{ backgroundColor: "color-mix(in srgb, var(--accent-red) 7%, transparent)", borderColor: "color-mix(in srgb, var(--accent-red) 35%, transparent)", color: "var(--text-muted)" }}>
         {packet.disclaimer}
       </section>

@@ -59,13 +59,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "case, evidence, and checklist are required" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
-    }
-
     const c = body.case;
     const { evidence, checklist } = body;
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === "" || apiKey === "your_key_here") {
+      const fallback = createFallbackPacket(c, evidence);
+      return NextResponse.json({ packet: fallback, fallback: true }, { status: 200 });
+    }
     const systemPrompt = `You are CivicProof's evidence analysis engine. Your job is to analyze an incident case and its evidence, then generate a structured action packet.
 
 RULES:

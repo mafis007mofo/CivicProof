@@ -6,7 +6,7 @@ import { calculateEvidenceScore } from "@/lib/evidenceScore";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import { getAllCases, getEvidenceForCase } from "@/lib/localStorage";
 import type { IncidentCase, IncidentType } from "@/types";
-import { Calendar, Car, ChevronRight, MapPin, Plus, Shield, Zap } from "lucide-react";
+import { BarChart2, Calendar, Car, ChevronRight, FileText, MapPin, Plus, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -41,7 +41,7 @@ function CaseCard({ incidentCase, score }: CaseCardModel) {
 
   return (
     <article
-      className="group flex min-h-[320px] flex-col rounded-lg border p-5 transition duration-200 hover:scale-[1.01]"
+      className="group relative flex min-h-[320px] flex-col overflow-hidden rounded-lg border p-5 transition duration-200 hover:scale-[1.01]"
       style={{
         backgroundColor: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
         borderColor: "var(--border-subtle)",
@@ -108,6 +108,7 @@ function CaseCard({ incidentCase, score }: CaseCardModel) {
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
+      <div className="absolute inset-x-0 bottom-0 h-[3px]" style={{ backgroundColor: accent, opacity: 0.7 }} />
     </article>
   );
 }
@@ -167,10 +168,22 @@ export default function DashboardPage() {
   );
   const nonDemoCount = caseCards.filter(({ incidentCase }) => incidentCase.id !== "demo-001").length;
 
+  const totalCases = caseCards.length;
+  const packetsGenerated = cases.filter((c) => c.status === "packet_generated" || c.status === "submitted").length;
+  const scores = caseCards.map(({ score }) => score.total);
+  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
       <Navbar />
       <section className="mx-auto w-full max-w-7xl px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+        {/* Breadcrumb */}
+        <div className="mb-6 flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
+          <span>CivicProof</span>
+          <ChevronRight className="h-3 w-3" />
+          <span style={{ color: "var(--text-primary)" }}>Dashboard</span>
+        </div>
+
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -190,6 +203,24 @@ export default function DashboardPage() {
             <Plus className="h-4 w-4" />
             New Case
           </Link>
+        </div>
+
+        {/* Stats row */}
+        <div className="mt-6 flex flex-wrap items-center gap-4 text-sm" style={{ color: "var(--text-muted)" }}>
+          <span className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+            <FileText className="h-4 w-4" style={{ color: "var(--accent-green)" }} />
+            {totalCases} Cases
+          </span>
+          <span className="text-xs">·</span>
+          <span className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+            <Zap className="h-4 w-4" style={{ color: "var(--accent-amber)" }} />
+            {packetsGenerated} Packets Ready
+          </span>
+          <span className="text-xs">·</span>
+          <span className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+            <BarChart2 className="h-4 w-4" style={{ color: "var(--accent-blue)" }} />
+            Avg Score: {avgScore}/100
+          </span>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2">

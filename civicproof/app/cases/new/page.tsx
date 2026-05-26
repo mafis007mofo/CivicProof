@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { generateId, saveCase } from "@/lib/localStorage";
 import type { IncidentCase, IncidentType } from "@/types";
-import { AlertCircle, Car, CheckCircle, MapPin } from "lucide-react";
+import { AlertCircle, Car, CheckCircle, Lightbulb, MapPin, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -33,18 +33,20 @@ const initialFormState: FormState = {
   description: "",
 };
 
-const typeOptions: { value: IncidentType; title: string; description: string; icon: typeof Car }[] = [
+const typeOptions: { value: IncidentType; title: string; description: string; icon: typeof Car; pills: string[] }[] = [
   {
     value: "road_accident",
     title: "Road Accident",
     description: "Vehicle damage, collision documentation, insurance-ready summaries.",
     icon: Car,
+    pills: ["Vehicle collision", "Pothole damage", "Hit and run"],
   },
   {
     value: "civic_issue",
     title: "Civic Issue",
     description: "Potholes, broken infrastructure, unsafe public conditions.",
     icon: MapPin,
+    pills: ["Road damage", "Broken streetlight", "Garbage dumping"],
   },
 ];
 
@@ -126,17 +128,35 @@ export default function NewCasePage() {
           <h1 className="mt-3 text-4xl font-extrabold sm:text-5xl" style={{ color: "var(--text-primary)" }}>
             Report an Incident
           </h1>
-          <div className="mt-6 flex items-center gap-3">
-            {[1, 2].map((item) => (
+          <div className="mt-6 flex items-center gap-0">
+            {/* Step 1 */}
+            <div className="flex items-center gap-2">
               <span
-                key={item}
-                className="h-2.5 w-10 rounded-full transition"
+                className="grid h-8 w-8 place-items-center rounded-full font-mono text-sm font-bold"
                 style={{
-                  backgroundColor: step === item ? "var(--accent-green)" : "var(--border-subtle)",
-                  boxShadow: step === item ? "0 0 14px color-mix(in srgb, var(--accent-green) 26%, transparent)" : "none",
+                  backgroundColor: step >= 1 ? "var(--accent-green)" : "var(--bg-elevated)",
+                  color: step >= 1 ? "var(--bg-primary)" : "var(--text-muted)",
                 }}
-              />
-            ))}
+              >
+                1
+              </span>
+              <span className="text-sm font-semibold" style={{ color: step >= 1 ? "var(--text-primary)" : "var(--text-muted)" }}>Incident Details</span>
+            </div>
+            {/* Connecting line */}
+            <div className="mx-3 h-px w-12" style={{ backgroundColor: step > 1 ? "var(--accent-green)" : "var(--border-subtle)" }} />
+            {/* Step 2 */}
+            <div className="flex items-center gap-2">
+              <span
+                className="grid h-8 w-8 place-items-center rounded-full font-mono text-sm font-bold"
+                style={{
+                  backgroundColor: step >= 2 ? "var(--accent-green)" : "var(--bg-elevated)",
+                  color: step >= 2 ? "var(--bg-primary)" : "var(--text-muted)",
+                }}
+              >
+                2
+              </span>
+              <span className="text-sm font-semibold" style={{ color: step >= 2 ? "var(--text-primary)" : "var(--text-muted)" }}>Declaration</span>
+            </div>
           </div>
         </div>
 
@@ -166,6 +186,13 @@ export default function NewCasePage() {
                       <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-muted)" }}>
                         {option.description}
                       </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {option.pills.map((pill) => (
+                          <span key={pill} className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: "var(--bg-elevated)", color: "var(--text-muted)" }}>
+                            {pill}
+                          </span>
+                        ))}
+                      </div>
                     </button>
                   );
                 })}
@@ -218,6 +245,10 @@ export default function NewCasePage() {
                       {form.description.length} characters
                     </p>
                   </div>
+                  <div className="mt-3 flex items-start gap-2 rounded-md border px-3 py-2" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 8%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 28%, transparent)" }}>
+                    <Lightbulb className="mt-0.5 h-[11px] w-[11px] shrink-0" style={{ color: "var(--accent-amber)" }} />
+                    <p className="text-xs leading-5" style={{ color: "var(--text-muted)" }}>Be specific — mention landmarks, approximate times, damage details, and any witnesses you saw</p>
+                  </div>
                 </div>
               </div>
 
@@ -253,14 +284,23 @@ export default function NewCasePage() {
                 </dl>
               </div>
 
-              <button type="button" onClick={() => setDeclarationSigned((current) => !current)} className="flex w-full gap-4 rounded-lg border p-5 text-left" style={{ backgroundColor: "var(--bg-primary)", borderColor: declarationSigned ? "var(--accent-green)" : "var(--border-subtle)" }}>
-                <span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded border" style={{ backgroundColor: declarationSigned ? "var(--accent-green)" : "transparent", borderColor: declarationSigned ? "var(--accent-green)" : "var(--border-subtle)", color: "var(--bg-primary)" }}>
-                  {declarationSigned ? <CheckCircle className="h-4 w-4" /> : null}
-                </span>
-                <span className="text-sm leading-6" style={{ color: "var(--text-primary)" }}>
-                  I confirm that the information and evidence I am submitting is accurate to the best of my knowledge. I understand that CivicProof does not verify legal truth, and that filing a false report may have legal consequences.
-                </span>
-              </button>
+              <div className="rounded-lg border p-5" style={{ backgroundColor: "var(--bg-primary)", borderColor: declarationSigned ? "var(--accent-green)" : "var(--border-subtle)" }}>
+                <div className="mb-4 flex items-center gap-3">
+                  <Shield className="h-5 w-5" style={{ color: "var(--accent-green)" }} />
+                  <div>
+                    <h3 className="font-heading text-lg font-bold" style={{ color: "var(--text-primary)" }}>CivicProof Declaration</h3>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>Required before generating your action packet</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setDeclarationSigned((current) => !current)} className="flex w-full gap-4 text-left">
+                  <span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded border" style={{ backgroundColor: declarationSigned ? "var(--accent-green)" : "transparent", borderColor: declarationSigned ? "var(--accent-green)" : "var(--border-subtle)", color: "var(--bg-primary)" }}>
+                    {declarationSigned ? <CheckCircle className="h-4 w-4" /> : null}
+                  </span>
+                  <span className="text-sm leading-6" style={{ color: "var(--text-primary)" }}>
+                    I confirm that the information and evidence I am submitting is accurate to the best of my knowledge. I understand that CivicProof does not verify legal truth, and that filing a false report may have legal consequences.
+                  </span>
+                </button>
+              </div>
 
               <div className="flex gap-3 rounded-lg border p-4" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 35%, transparent)", color: "var(--accent-amber)" }}>
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />

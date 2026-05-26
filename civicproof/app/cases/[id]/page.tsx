@@ -1,6 +1,7 @@
 "use client";
 
 import { StatusBadge } from "@/components/cases/StatusBadge";
+import { EvidenceCanvas } from "@/components/canvas/EvidenceCanvas";
 import { EvidenceCard } from "@/components/evidence/EvidenceCard";
 import { EvidenceUpload } from "@/components/evidence/EvidenceUpload";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
@@ -12,7 +13,7 @@ import { calculateEvidenceScore } from "@/lib/evidenceScore";
 import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence, savePacket, updateCase } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, Loader2, Lock, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Car, Check, CheckCircle2, Circle, ClipboardCheck, FileText, Loader2, Lock, MapPin, Minus, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -241,16 +242,27 @@ export default function CaseDetailPage() {
           All Cases
         </Link>
 
-        <header className="mt-8">
+        <header className="relative mt-8 overflow-hidden">
           <StatusBadge status={incidentCase.status} />
           <h1 className="mt-4 max-w-4xl text-4xl font-extrabold leading-tight sm:text-5xl" style={{ color: "var(--text-primary)" }}>
             {incidentCase.title}
           </h1>
-          <p className="mt-4 text-sm leading-6" style={{ color: "var(--text-muted)" }}>
+          <p className="mt-2 font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+            Case #{incidentCase.id}
+          </p>
+          <p className="mt-2 text-sm leading-6" style={{ color: "var(--text-muted)" }}>
             {incidentCase.location} - {incidentCase.incidentDate}
             {incidentCase.incidentTime ? ` at ${incidentCase.incidentTime}` : ""}
           </p>
+          {(() => {
+            const WatermarkIcon = incidentCase.incidentType === "road_accident" ? Car : MapPin;
+            return <WatermarkIcon className="pointer-events-none absolute -bottom-4 -right-4 h-[120px] w-[120px]" style={{ color: "var(--text-primary)", opacity: 0.03 }} />;
+          })()}
         </header>
+
+        <div className="mt-10">
+          <EvidenceCanvas incidentCase={incidentCase} evidence={evidence} packet={packet} isAnalyzing={isGenerating} />
+        </div>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <section className="space-y-6">
@@ -260,7 +272,7 @@ export default function CaseDetailPage() {
                   Evidence
                 </h2>
                 <p className="font-mono text-xs uppercase" style={{ color: "var(--text-muted)" }}>
-                  {evidence.length} items
+                  {evidence.length} files · {(evidence.reduce((sum, e) => sum + (e.fileSize ?? 0), 0) / (1024 * 1024)).toFixed(1)} MB
                 </p>
               </div>
 
@@ -305,9 +317,9 @@ export default function CaseDetailPage() {
                 type="button"
                 disabled={!canGeneratePacket && !isDemo}
                 title={generateButtonTitle}
-                className="mt-5 w-full sm:w-auto"
+                className={`mt-5 w-full${canGeneratePacket && !isGenerating ? " btn-shimmer" : ""}`}
                 onClick={handleGeneratePacket}
-                style={{ backgroundColor: canGeneratePacket || isDemo ? "var(--accent-green)" : "var(--bg-elevated)", color: canGeneratePacket || isDemo ? "var(--bg-primary)" : "var(--text-muted)" }}
+                style={canGeneratePacket && !isGenerating ? undefined : { backgroundColor: canGeneratePacket || isDemo ? "var(--accent-green)" : "var(--bg-elevated)", color: canGeneratePacket || isDemo ? "var(--bg-primary)" : "var(--text-muted)" }}
               >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                 {isGenerating ? "Analyzing evidence..." : "Generate Packet"}
@@ -328,12 +340,27 @@ export default function CaseDetailPage() {
               ) : null}
             </div>
 
-            {packet ? <PacketPreview packet={packet} caseTitle={incidentCase.title} /> : null}
+            {packet ? (
+              <div id="packet-preview">
+                <PacketPreview packet={packet} caseTitle={incidentCase.title} />
+              </div>
+            ) : null}
           </section>
 
           <aside className="space-y-6">
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <ScoreBadge total={scoreBreakdown.total} label={scoreBreakdown.label} color={scoreBreakdown.color} showBar />
+              <div className="mt-5 space-y-2">
+                {scoreBreakdown.breakdown.map((item) => (
+                  <div key={item.criterion} className="flex items-center justify-between gap-2 text-sm">
+                    <span style={{ color: item.earned ? "var(--text-primary)" : "var(--text-muted)" }}>{item.criterion}</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-xs" style={{ color: item.earned ? "var(--accent-green)" : "var(--text-muted)" }}>
+                      {item.earned ? <Check className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                      +{item.points}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </section>
 
             <section className="rounded-lg border p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
