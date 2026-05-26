@@ -22,6 +22,8 @@ export function validateEvidenceInput(evidenceItems: CivicProofEvidence[]): void
     if ((item.fileName ?? "").length > 240) throw new Error("Evidence filename is too long.");
     if ((item.userNote ?? "").length > 2000) throw new Error("Evidence note is too long.");
     if ((item.extractedText ?? "").length > 20000) throw new Error("Extracted document text is too long.");
-    if (!item.trustLabels || item.trustLabels.length === 0) item.trustLabels = ["user_provided", "not_independently_verified"];
+    if (!item.trustLabels || item.trustLabels.length === 0) {
+      // Do not mutate — the analyzer will assign default labels downstream
+    }
   }
 }

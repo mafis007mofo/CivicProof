@@ -7,7 +7,7 @@ import { generatePacket } from "./packetGenerator";
 import { buildDocumentChunks } from "./documentChunker";
 import { validateCaseInput, validateEvidenceInput } from "./validation";
 
-export async function runCivicProofPipeline(caseData: CivicProofCase, evidenceItems: CivicProofEvidence[]): Promise<PipelineResult> {
+export async function runCivicProofPipeline(caseData: CivicProofCase, evidenceItems: CivicProofEvidence[]): Promise<PipelineResult & { usedFallback: boolean }> {
   validateCaseInput(caseData);
   validateEvidenceInput(evidenceItems);
 
@@ -18,7 +18,7 @@ export async function runCivicProofPipeline(caseData: CivicProofCase, evidenceIt
   const extractedClaims = extractClaims(caseData, normalizedEvidence);
   const claimEvidenceMap = mapClaimsToEvidence(extractedClaims, normalizedEvidence);
   const readiness = evaluateCaseReadiness(caseData, normalizedEvidence);
-  const packet = await generatePacket({
+  const { packet, usedFallback } = await generatePacket({
     caseData,
     evidenceItems: normalizedEvidence,
     documentChunks,
@@ -35,5 +35,6 @@ export async function runCivicProofPipeline(caseData: CivicProofCase, evidenceIt
     claimEvidenceMap,
     readiness,
     packet,
+    usedFallback,
   };
 }

@@ -9,37 +9,37 @@ type TrustLabelMeta = {
 const trustLabelMeta: Record<TrustLabel, TrustLabelMeta> = {
   user_provided: {
     color: "var(--accent-green)",
-    bgColor: "rgba(34,197,94,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-green) 10%, transparent)",
     description: "Uploaded by user; authenticity not verified",
   },
   metadata_available: {
     color: "var(--accent-green)",
-    bgColor: "rgba(34,197,94,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-green) 10%, transparent)",
     description: "Basic file properties are present",
   },
   metadata_missing: {
     color: "var(--accent-amber)",
-    bgColor: "rgba(245,158,11,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)",
     description: "No metadata - origin cannot be confirmed",
   },
   not_independently_verified: {
     color: "var(--accent-amber)",
-    bgColor: "rgba(245,158,11,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)",
     description: "Not independently verified by CivicProof",
   },
   possibly_edited: {
     color: "var(--accent-amber)",
-    bgColor: "rgba(245,158,11,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-amber) 10%, transparent)",
     description: "File may have been modified after capture",
   },
   ai_risk_unknown: {
     color: "var(--accent-red)",
-    bgColor: "rgba(239,68,68,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-red) 10%, transparent)",
     description: "Cannot determine if AI-generated",
   },
   needs_human_verification: {
     color: "var(--accent-red)",
-    bgColor: "rgba(239,68,68,0.1)",
+    bgColor: "color-mix(in srgb, var(--accent-red) 10%, transparent)",
     description: "Requires human review before submission",
   },
 };
@@ -50,7 +50,6 @@ export function assignTrustLabel(file: File, item: EvidenceItem): TrustLabel {
   const aiWatermarkSignal = /chatgpt|openai|dall-?e|sora|gemini|imagen|ai generated|generated image|watermark/.test(
     `${lowerName} ${note}`,
   );
-  void item;
 
   if (aiWatermarkSignal) {
     return "possibly_edited";

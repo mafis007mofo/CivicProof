@@ -9,8 +9,7 @@ import Navbar from "@/components/layout/Navbar";
 import { PacketPreview } from "@/components/PacketPreview";
 import { TrustPanel } from "@/components/trust/TrustPanel";
 import { Button } from "@/components/ui/button";
-import { toCivicProofCase, toCivicProofEvidence } from "@/lib/civicproof/adapters";
-import { runCivicProofPipeline } from "@/lib/civicproof/pipeline";
+
 import { getChecklistForCase } from "@/lib/checklists";
 import { enrichEvidenceItem } from "@/lib/evidenceAnalysis";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
@@ -126,18 +125,23 @@ export default function CaseDetailPage() {
       return;
     }
 
-    void runCivicProofPipeline(toCivicProofCase(incidentCase), evidence.map(toCivicProofEvidence))
-      .then((result) => {
-        if (!isActive) return;
+    void fetch("/api/civicproof/run-pipeline", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caseData: { id: incidentCase.id, caseType: incidentCase.incidentType, title: incidentCase.title, status: incidentCase.status, location: incidentCase.location, incidentDate: incidentCase.incidentDate, incidentTime: incidentCase.incidentTime, description: incidentCase.description, createdAt: incidentCase.createdAt, updatedAt: incidentCase.updatedAt, declarationSigned: incidentCase.declarationSigned }, evidenceItems: evidence.map((item) => ({ id: item.id, caseId: item.caseId, type: item.fileType === "other" ? "text" : item.fileType, fileName: item.fileName, fileUrl: item.fileUrl, sizeBytes: item.fileSize, sha256Hash: item.sha256Hash, uploadedAt: item.uploadedAt, userNote: item.note, aiSummary: item.analysisSummary, supportedClaims: item.requiredEvidenceMatches, trustLabels: [item.trustLabel ?? "user_provided", "not_independently_verified"], metadata: { metadataStatus: "missing" } })) }),
+    })
+      .then((response) => response.json())
+      .then((data: { ok?: boolean; result?: { readiness?: PipelineSummary; extractedClaims?: ExtractedClaim[] } }) => {
+        if (!isActive || !data.ok || !data.result?.readiness) return;
         setPipelineSummary({
-          primaryPacketPath: result.readiness.primaryPacketPath,
-          packetPaths: result.readiness.packetPaths,
-          readinessScore: result.readiness.readinessScore,
-          missingRequirements: result.readiness.missingRequirements,
-          weakRequirements: result.readiness.weakRequirements,
-          recommendedNextQuestions: result.readiness.recommendedNextQuestions,
-          reasoning: result.readiness.reasoning,
-          extractedClaims: result.extractedClaims,
+          primaryPacketPath: data.result.readiness.primaryPacketPath ?? "",
+          packetPaths: data.result.readiness.packetPaths ?? [],
+          readinessScore: data.result.readiness.readinessScore ?? 0,
+          missingRequirements: data.result.readiness.missingRequirements ?? [],
+          weakRequirements: data.result.readiness.weakRequirements ?? [],
+          recommendedNextQuestions: data.result.readiness.recommendedNextQuestions ?? [],
+          reasoning: data.result.readiness.reasoning ?? [],
+          extractedClaims: data.result.extractedClaims ?? [],
         });
       })
       .catch(() => {
@@ -269,7 +273,7 @@ export default function CaseDetailPage() {
       const response = await fetch("/api/generate-packet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ case: incidentCase, evidence, checklist: getChecklistForCase(incidentCase.incidentType) }),
+        body: JSON.stringify({ case: incidentCase, evidence }),
       });
 
       if (!response.ok) {
