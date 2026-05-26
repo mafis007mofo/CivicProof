@@ -1,25 +1,23 @@
 "use client";
 
 import { StatusBadge } from "@/components/cases/StatusBadge";
+import { EvidenceCard } from "@/components/evidence/EvidenceCard";
+import { EvidenceUpload } from "@/components/evidence/EvidenceUpload";
 import { ScoreBadge } from "@/components/evidence/ScoreBadge";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { getChecklistForCase } from "@/lib/checklists";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
-import { getCaseById, getEvidenceForCase, getPacketForCase } from "@/lib/localStorage";
+import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
-import { ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, ImageIcon, Upload, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, ClipboardCheck, FileText, Lock, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function formatCaseType(type: IncidentCase["incidentType"]): string {
   return type === "road_accident" ? "Road Accident" : "Civic Issue";
-}
-
-function trustLabelText(item: EvidenceItem): string {
-  return item.trustLabel?.replaceAll("_", " ") ?? "unlabeled";
 }
 
 function getChecklistKeywords(item: string): string[] {
@@ -53,6 +51,7 @@ export default function CaseDetailPage() {
   const [scoreBreakdown, setScoreBreakdown] = useState<ScoreBreakdown | null>(null);
   const [checklist, setChecklist] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const sessionObjectUrls = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let isActive = true;
@@ -100,6 +99,15 @@ export default function CaseDetailPage() {
     };
   }, [hasValidId, id]);
 
+  useEffect(() => {
+    const objectUrls = sessionObjectUrls.current;
+
+    return () => {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.clear();
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
@@ -139,6 +147,38 @@ export default function CaseDetailPage() {
 
   const isDemo = incidentCase.id === "demo-001";
 
+  const updateEvidenceState = (nextEvidence: EvidenceItem[]): EvidenceItem[] => {
+    setEvidence(nextEvidence);
+    setScoreBreakdown(calculateEvidenceScore(incidentCase, nextEvidence));
+    return nextEvidence;
+  };
+
+  const handleUpload = (item: EvidenceItem) => {
+    if (item.fileUrl.startsWith("blob:")) {
+      sessionObjectUrls.current.add(item.fileUrl);
+    }
+
+    setEvidence((current) => {
+      const nextEvidence = [item, ...current];
+      setScoreBreakdown(calculateEvidenceScore(incidentCase, nextEvidence));
+      return nextEvidence;
+    });
+  };
+
+  const handleEvidenceUpdate = (item: EvidenceItem) => {
+    updateEvidenceState(evidence.map((evidenceItem) => (evidenceItem.id === item.id ? item : evidenceItem)));
+  };
+
+  const handleRemoveEvidence = (evidenceId: string) => {
+    const removedItem = evidence.find((item) => item.id === evidenceId);
+    removeEvidence(evidenceId);
+    if (removedItem?.fileUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(removedItem.fileUrl);
+      sessionObjectUrls.current.delete(removedItem.fileUrl);
+    }
+    updateEvidenceState(evidence.filter((item) => item.id !== evidenceId));
+  };
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
       <Navbar />
@@ -166,41 +206,32 @@ export default function CaseDetailPage() {
                 <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
                   Evidence
                 </h2>
-                {/* TODO: Day 2 - implement evidence upload */}
-                <Button type="button" variant="outline" style={{ borderColor: "var(--border-subtle)", color: "var(--text-primary)" }}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Evidence
-                </Button>
+                <p className="font-mono text-xs uppercase" style={{ color: "var(--text-muted)" }}>
+                  {evidence.length} items
+                </p>
               </div>
+
+              {isDemo ? (
+                <div className="mt-5 flex gap-3 rounded-lg border p-4 text-sm" style={{ backgroundColor: "color-mix(in srgb, var(--accent-blue) 10%, transparent)", borderColor: "color-mix(in srgb, var(--accent-blue) 35%, transparent)", color: "var(--text-primary)" }}>
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--accent-blue)" }} />
+                  Demo Case - evidence is read-only
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <EvidenceUpload caseId={incidentCase.id} onUpload={handleUpload} />
+                </div>
+              )}
 
               {evidence.length > 0 ? (
                 <div className="mt-6 grid gap-4">
                   {evidence.map((item) => (
-                    <article key={item.id} className="rounded-lg border p-4" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
-                      <div className="flex gap-4">
-                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md border" style={{ borderColor: "var(--border-subtle)", color: "var(--accent-blue)" }}>
-                          <ImageIcon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>
-                              {item.fileName}
-                            </h3>
-                            <span className="rounded-full px-2 py-0.5 text-xs" style={{ backgroundColor: "color-mix(in srgb, var(--accent-green) 12%, transparent)", color: "var(--accent-green)" }}>
-                              {trustLabelText(item)}
-                            </span>
-                          </div>
-                          <p className="mt-1 font-mono text-xs uppercase" style={{ color: "var(--text-muted)" }}>
-                            {item.fileType}
-                          </p>
-                          {item.note ? (
-                            <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-muted)" }}>
-                              {item.note}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    </article>
+                    <EvidenceCard
+                      key={item.id}
+                      item={item}
+                      onRemove={handleRemoveEvidence}
+                      onUpdate={handleEvidenceUpdate}
+                      readOnly={isDemo}
+                    />
                   ))}
                 </div>
               ) : (

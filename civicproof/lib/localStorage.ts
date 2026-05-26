@@ -117,8 +117,18 @@ export function getEvidenceForCase(caseId: string): EvidenceItem[] {
 
 export function saveEvidence(item: EvidenceItem): void {
   try {
+    const persistedItem = item.fileUrl.startsWith("blob:") ? { ...item, fileUrl: "" } : item;
     const evidence = readItems<EvidenceItem>(EVIDENCE_KEY).filter((savedItem) => savedItem.id !== item.id);
-    writeItems(EVIDENCE_KEY, [item, ...evidence]);
+    writeItems(EVIDENCE_KEY, [persistedItem, ...evidence]);
+  } catch {
+    return;
+  }
+}
+
+export function removeEvidence(id: string): void {
+  try {
+    const evidence = readItems<EvidenceItem>(EVIDENCE_KEY).filter((item) => item.id !== id);
+    writeItems(EVIDENCE_KEY, evidence);
   } catch {
     return;
   }
