@@ -22,6 +22,11 @@ const trustLabelMeta: Record<TrustLabel, TrustLabelMeta> = {
     bgColor: "rgba(245,158,11,0.1)",
     description: "No metadata - origin cannot be confirmed",
   },
+  not_independently_verified: {
+    color: "var(--accent-amber)",
+    bgColor: "rgba(245,158,11,0.1)",
+    description: "Not independently verified by CivicProof",
+  },
   possibly_edited: {
     color: "var(--accent-amber)",
     bgColor: "rgba(245,158,11,0.1)",
@@ -41,7 +46,15 @@ const trustLabelMeta: Record<TrustLabel, TrustLabelMeta> = {
 
 export function assignTrustLabel(file: File, item: EvidenceItem): TrustLabel {
   const lowerName = file.name.toLowerCase();
+  const note = item.note?.toLowerCase() ?? "";
+  const aiWatermarkSignal = /chatgpt|openai|dall-?e|sora|gemini|imagen|ai generated|generated image|watermark/.test(
+    `${lowerName} ${note}`,
+  );
   void item;
+
+  if (aiWatermarkSignal) {
+    return "possibly_edited";
+  }
 
   if (file.type.startsWith("image/") && file.size > 8 * 1024 * 1024) {
     return "possibly_edited";

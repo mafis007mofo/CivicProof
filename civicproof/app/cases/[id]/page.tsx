@@ -9,12 +9,15 @@ import Navbar from "@/components/layout/Navbar";
 import { PacketPreview } from "@/components/PacketPreview";
 import { TrustPanel } from "@/components/trust/TrustPanel";
 import { Button } from "@/components/ui/button";
+import { toCivicProofCase, toCivicProofEvidence } from "@/lib/civicproof/adapters";
+import { runCivicProofPipeline } from "@/lib/civicproof/pipeline";
 import { getChecklistForCase } from "@/lib/checklists";
 import { enrichEvidenceItem } from "@/lib/evidenceAnalysis";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
 import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence, removePacketForCase, saveEvidence, savePacket, updateCase } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
+import type { ExtractedClaim } from "@/types/civicproof";
 import { AlertTriangle, ArrowLeft, Car, Check, CheckCircle2, Circle, ClipboardCheck, FileText, Loader2, Lock, MapPin, Minus, Zap } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -26,6 +29,21 @@ function formatCaseType(type: IncidentCase["incidentType"]): string {
 
 function isChecklistItemCovered(item: string, evidence: EvidenceItem[]): boolean {
   return evidence.some((evidenceItem) => evidenceItem.requiredEvidenceMatches?.includes(item));
+}
+
+type PipelineSummary = {
+  primaryPacketPath: string;
+  packetPaths: string[];
+  readinessScore: number;
+  missingRequirements: string[];
+  weakRequirements: string[];
+  recommendedNextQuestions: string[];
+  reasoning: string[];
+  extractedClaims: ExtractedClaim[];
+};
+
+function formatPipelineLabel(value: string): string {
+  return value.replaceAll("_", " ");
 }
 
 export default function CaseDetailPage() {
@@ -43,6 +61,7 @@ export default function CaseDetailPage() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationNotice, setGenerationNotice] = useState<string | null>(null);
+  const [pipelineSummary, setPipelineSummary] = useState<PipelineSummary | null>(null);
   const sessionObjectUrls = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -99,6 +118,36 @@ export default function CaseDetailPage() {
       objectUrls.clear();
     };
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!incidentCase) {
+      return;
+    }
+
+    void runCivicProofPipeline(toCivicProofCase(incidentCase), evidence.map(toCivicProofEvidence))
+      .then((result) => {
+        if (!isActive) return;
+        setPipelineSummary({
+          primaryPacketPath: result.readiness.primaryPacketPath,
+          packetPaths: result.readiness.packetPaths,
+          readinessScore: result.readiness.readinessScore,
+          missingRequirements: result.readiness.missingRequirements,
+          weakRequirements: result.readiness.weakRequirements,
+          recommendedNextQuestions: result.readiness.recommendedNextQuestions,
+          reasoning: result.readiness.reasoning,
+          extractedClaims: result.extractedClaims,
+        });
+      })
+      .catch(() => {
+        if (isActive) setPipelineSummary(null);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [incidentCase, evidence]);
 
   if (isLoading) {
     return (
@@ -227,13 +276,16 @@ export default function CaseDetailPage() {
         throw new Error("Unable to generate packet.");
       }
 
-      const result = (await response.json()) as { packet?: GeneratedPacket; fallback?: boolean; error?: string };
+      const result = (await response.json()) as { packet?: GeneratedPacket; pipeline?: PipelineSummary; fallback?: boolean; error?: string };
       if (!result.packet) {
         throw new Error(result.error ?? "Unable to generate packet.");
       }
 
       savePacket(result.packet);
       setPacket(result.packet);
+      if (result.pipeline) {
+        setPipelineSummary(result.pipeline);
+      }
       updateCase(incidentCase.id, { status: "packet_generated" });
       setIncidentCase({ ...incidentCase, status: "packet_generated", updatedAt: new Date().toISOString() });
 
@@ -335,6 +387,83 @@ export default function CaseDetailPage() {
                 </div>
               </div>
             ) : null}
+
+            <div className="rounded-lg border p-5 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                    Reasoning Pipeline
+                  </h2>
+                  <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                    Case filing → evidence analysis → claims → readiness → packet path
+                  </p>
+                </div>
+                <span className="rounded-full border px-3 py-1 font-mono text-xs" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)", color: "var(--accent-green)" }}>
+                  {pipelineSummary ? `${pipelineSummary.readinessScore}/100 ready` : "checking"}
+                </span>
+              </div>
+
+              {pipelineSummary ? (
+                <div className="mt-5 space-y-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-md border p-3" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Primary packet path</p>
+                      <p className="mt-1 font-mono text-sm font-semibold" style={{ color: "var(--accent-green)" }}>
+                        {formatPipelineLabel(pipelineSummary.primaryPacketPath)}
+                      </p>
+                    </div>
+                    <div className="rounded-md border p-3" style={{ backgroundColor: "var(--bg-primary)", borderColor: "var(--border-subtle)" }}>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Packet outputs</p>
+                      <p className="mt-1 text-sm" style={{ color: "var(--text-primary)" }}>
+                        {pipelineSummary.packetPaths.map(formatPipelineLabel).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Missing requirements</p>
+                      <ul className="mt-2 space-y-2">
+                        {pipelineSummary.missingRequirements.slice(0, 6).map((item) => (
+                          <li key={item} className="text-sm" style={{ color: "var(--accent-amber)" }}>{formatPipelineLabel(item)}</li>
+                        ))}
+                        {pipelineSummary.missingRequirements.length === 0 ? <li className="text-sm" style={{ color: "var(--accent-green)" }}>No missing required fields detected</li> : null}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Next proof to collect</p>
+                      <ul className="mt-2 space-y-2">
+                        {pipelineSummary.recommendedNextQuestions.slice(0, 5).map((item) => (
+                          <li key={item} className="text-sm leading-5" style={{ color: "var(--text-primary)" }}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Routing reasoning</p>
+                    <ul className="mt-2 space-y-2">
+                      {pipelineSummary.reasoning.map((item) => (
+                        <li key={item} className="text-sm leading-5" style={{ color: "var(--text-muted)" }}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Extracted claims</p>
+                    <ul className="mt-2 space-y-2">
+                      {pipelineSummary.extractedClaims.slice(0, 5).map((claim) => (
+                        <li key={claim.id} className="text-sm leading-5" style={{ color: "var(--text-primary)" }}>{claim.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-5 text-sm" style={{ color: "var(--text-muted)" }}>
+                  Pipeline will run once the case is loaded.
+                </p>
+              )}
+            </div>
 
             <div className="rounded-lg border p-5 sm:p-6" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
               <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>

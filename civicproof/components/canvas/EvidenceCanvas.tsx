@@ -48,6 +48,7 @@ const trustColorMap: Record<TrustLabel, string> = {
   user_provided: "var(--accent-green)",
   metadata_available: "var(--accent-green)",
   metadata_missing: "var(--accent-amber)",
+  not_independently_verified: "var(--accent-amber)",
   possibly_edited: "var(--accent-amber)",
   ai_risk_unknown: "var(--accent-red)",
   needs_human_verification: "var(--accent-red)",

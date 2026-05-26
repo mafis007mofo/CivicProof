@@ -8,6 +8,7 @@ export type TrustLabel =
   | "user_provided"
   | "metadata_available"
   | "metadata_missing"
+  | "not_independently_verified"
   | "possibly_edited"
   | "ai_risk_unknown"
   | "needs_human_verification";

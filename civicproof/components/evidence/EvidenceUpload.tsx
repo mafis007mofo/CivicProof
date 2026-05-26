@@ -4,7 +4,7 @@ import { generateId, saveEvidence } from "@/lib/localStorage";
 import { enrichEvidenceItem } from "@/lib/evidenceAnalysis";
 import { assignTrustLabel } from "@/lib/trustAnalysis";
 import type { EvidenceItem, FileType, IncidentCase } from "@/types";
-import { FileUp, Loader2, Upload } from "lucide-react";
+import { AlertTriangle, FileUp, Loader2, Upload } from "lucide-react";
 import type { DragEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -19,6 +19,13 @@ type ProcessingFile = {
 };
 
 const acceptedFormats = "image/*,video/*,audio/*,.pdf,.doc,.docx";
+const maxFileSizeBytes = 12 * 1024 * 1024;
+const allowedMimePrefixes = ["image/", "video/", "audio/"];
+const allowedMimeTypes = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
 
 function getFileType(file: File): FileType {
   if (file.type.startsWith("image/")) {
@@ -66,6 +73,21 @@ export function EvidenceUpload({ incidentCase, onUpload }: EvidenceUploadProps) 
   const [uploadedCount, setUploadedCount] = useState(0);
   const [uploadedBytes, setUploadedBytes] = useState(0);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
+
+  const validateFile = (file: File): string | null => {
+    const isAllowedType = allowedMimePrefixes.some((prefix) => file.type.startsWith(prefix)) || allowedMimeTypes.has(file.type);
+
+    if (!isAllowedType) {
+      return `${file.name} is not an accepted evidence type.`;
+    }
+
+    if (file.size > maxFileSizeBytes) {
+      return `${file.name} is larger than 12 MB. Compress it or upload a smaller evidence file.`;
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -79,6 +101,12 @@ export function EvidenceUpload({ incidentCase, onUpload }: EvidenceUploadProps) 
     const fileList = Array.from(files);
 
     for (const file of fileList) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setUploadWarning(validationError);
+        continue;
+      }
+
       const processingId = generateId();
       if (isMountedRef.current) {
         setProcessingFiles((current) => [...current, { id: processingId, fileName: file.name }]);
@@ -168,6 +196,20 @@ export function EvidenceUpload({ incidentCase, onUpload }: EvidenceUploadProps) 
           Images, videos, audio, PDF, DOC, and DOCX
         </p>
       </div>
+
+      <div className="flex gap-3 rounded-lg border p-4 text-sm leading-6" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 8%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 34%, transparent)", color: "var(--text-primary)" }}>
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: "var(--accent-amber)" }} />
+        <p>
+          Do not upload AI-generated or manipulated media as evidence. CivicProof flags obvious ChatGPT/OpenAI/Gemini-style
+          watermark signals from filename, notes, and metadata text, but it cannot prove authenticity.
+        </p>
+      </div>
+
+      {uploadWarning ? (
+        <div className="rounded-md border px-3 py-2 text-sm" style={{ backgroundColor: "color-mix(in srgb, var(--accent-red) 8%, transparent)", borderColor: "color-mix(in srgb, var(--accent-red) 34%, transparent)", color: "var(--accent-red)" }}>
+          {uploadWarning}
+        </div>
+      ) : null}
 
       <input
         value={note}
