@@ -111,7 +111,7 @@ export function PacketPreview({ packet, caseTitle, evidence }: PacketPreviewProp
             <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>Case ID: {packet.caseId}</p>
             <p className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>Generated: {formatGeneratedDate(packet.generatedAt)}</p>
             <p className="mt-1 font-mono text-xs" style={{ color: trustScore.color }}>
-              Evidence Trust: {trustScore.score}/100 - {trustScore.label}
+              Evidence Confidence: {trustScore.score}/100 - {trustScore.label}
             </p>
           </div>
         </div>

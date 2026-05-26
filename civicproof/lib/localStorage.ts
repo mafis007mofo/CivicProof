@@ -155,6 +155,19 @@ export function savePacket(packet: GeneratedPacket): void {
   }
 }
 
+export function removePacketForCase(caseId: string): void {
+  try {
+    if (caseId === DEMO_CASE.id) {
+      return;
+    }
+
+    const packets = readItems<GeneratedPacket>(PACKETS_KEY).filter((item) => item.caseId !== caseId);
+    writeItems(PACKETS_KEY, packets);
+  } catch {
+    return;
+  }
+}
+
 export function generateId(): string {
   try {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {

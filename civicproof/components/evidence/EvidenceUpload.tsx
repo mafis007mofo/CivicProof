@@ -1,14 +1,15 @@
 "use client";
 
 import { generateId, saveEvidence } from "@/lib/localStorage";
+import { enrichEvidenceItem } from "@/lib/evidenceAnalysis";
 import { assignTrustLabel } from "@/lib/trustAnalysis";
-import type { EvidenceItem, FileType } from "@/types";
+import type { EvidenceItem, FileType, IncidentCase } from "@/types";
 import { FileUp, Loader2, Upload } from "lucide-react";
 import type { DragEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 type EvidenceUploadProps = {
-  caseId: string;
+  incidentCase: IncidentCase;
   onUpload: (item: EvidenceItem) => void;
 };
 
@@ -57,7 +58,7 @@ function formatFileSize(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function EvidenceUpload({ caseId, onUpload }: EvidenceUploadProps) {
+export function EvidenceUpload({ incidentCase, onUpload }: EvidenceUploadProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const isMountedRef = useRef(true);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,7 +93,7 @@ export function EvidenceUpload({ caseId, onUpload }: EvidenceUploadProps) {
 
         const item: EvidenceItem = {
           id: generateId(),
-          caseId,
+          caseId: incidentCase.id,
           fileName: file.name,
           fileType: getFileType(file),
           fileUrl: URL.createObjectURL(file),
@@ -102,7 +103,7 @@ export function EvidenceUpload({ caseId, onUpload }: EvidenceUploadProps) {
           uploadedAt: new Date().toISOString(),
         };
         const trustLabel = assignTrustLabel(file, item);
-        const itemWithTrust: EvidenceItem = { ...item, trustLabel };
+        const itemWithTrust = enrichEvidenceItem(incidentCase, { ...item, trustLabel });
 
         saveEvidence(itemWithTrust);
         onUpload(itemWithTrust);

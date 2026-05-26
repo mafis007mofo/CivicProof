@@ -118,21 +118,8 @@ function formatLabel(value?: string): string {
   return (value ?? "user_provided").replaceAll("_", " ");
 }
 
-function checklistKeywords(item: string): string[] {
-  const stopWords = new Set(["with", "from", "showing", "details", "photo", "photos", "photograph", "clear"]);
-  return item
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((word) => word.length > 3 && !stopWords.has(word));
-}
-
 function isChecklistCovered(item: string, evidence: EvidenceItem[]): boolean {
-  const keywords = checklistKeywords(item);
-  return evidence.some((evidenceItem) => {
-    const searchable = `${evidenceItem.fileName} ${evidenceItem.note ?? ""}`.toLowerCase();
-    return keywords.some((keyword) => searchable.includes(keyword));
-  });
+  return evidence.some((evidenceItem) => evidenceItem.requiredEvidenceMatches?.includes(item));
 }
 
 function claimStatusIcon(status: ClaimStatus) {

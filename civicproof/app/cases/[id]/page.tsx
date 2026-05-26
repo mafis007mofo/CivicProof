@@ -10,8 +10,9 @@ import { PacketPreview } from "@/components/PacketPreview";
 import { TrustPanel } from "@/components/trust/TrustPanel";
 import { Button } from "@/components/ui/button";
 import { getChecklistForCase } from "@/lib/checklists";
+import { enrichEvidenceItem } from "@/lib/evidenceAnalysis";
 import { calculateEvidenceScore } from "@/lib/evidenceScore";
-import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence, savePacket, updateCase } from "@/lib/localStorage";
+import { getCaseById, getEvidenceForCase, getPacketForCase, removeEvidence, removePacketForCase, saveEvidence, savePacket, updateCase } from "@/lib/localStorage";
 import type { ScoreBreakdown } from "@/lib/evidenceScore";
 import type { EvidenceItem, GeneratedPacket, IncidentCase } from "@/types";
 import { AlertTriangle, ArrowLeft, Car, Check, CheckCircle2, Circle, ClipboardCheck, FileText, Loader2, Lock, MapPin, Minus, Zap } from "lucide-react";
@@ -23,22 +24,8 @@ function formatCaseType(type: IncidentCase["incidentType"]): string {
   return type === "road_accident" ? "Road Accident" : "Civic Issue";
 }
 
-function getChecklistKeywords(item: string): string[] {
-  const stopWords = new Set(["the", "and", "with", "from", "showing", "details", "photo", "photos", "photograph"]);
-  return item
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((word) => word.length > 3 && !stopWords.has(word));
-}
-
 function isChecklistItemCovered(item: string, evidence: EvidenceItem[]): boolean {
-  const keywords = getChecklistKeywords(item);
-
-  return evidence.some((evidenceItem) => {
-    const searchableText = `${evidenceItem.fileName} ${evidenceItem.note ?? ""}`.toLowerCase();
-    return keywords.some((keyword) => searchableText.includes(keyword));
-  });
+  return evidence.some((evidenceItem) => evidenceItem.requiredEvidenceMatches?.includes(item));
 }
 
 export default function CaseDetailPage() {
@@ -87,7 +74,7 @@ export default function CaseDetailPage() {
         return;
       }
 
-      const loadedEvidence = getEvidenceForCase(id);
+      const loadedEvidence = getEvidenceForCase(id).map((item) => enrichEvidenceItem(loadedCase, item));
       const loadedPacket = getPacketForCase(id);
       const loadedScoreBreakdown = calculateEvidenceScore(loadedCase, loadedEvidence);
 
@@ -168,10 +155,27 @@ export default function CaseDetailPage() {
       setScoreBreakdown(calculateEvidenceScore(incidentCase, nextEvidence));
       return nextEvidence;
     });
+
+    if (packet && !isDemo) {
+      removePacketForCase(incidentCase.id);
+      setPacket(null);
+      setGenerationNotice("Evidence changed - regenerate the packet to refresh claim mapping.");
+      updateCase(incidentCase.id, { status: "draft" });
+      setIncidentCase({ ...incidentCase, status: "draft", updatedAt: new Date().toISOString() });
+    }
   };
 
   const handleEvidenceUpdate = (item: EvidenceItem) => {
-    updateEvidenceState(evidence.map((evidenceItem) => (evidenceItem.id === item.id ? item : evidenceItem)));
+    const enrichedItem = enrichEvidenceItem(incidentCase, item);
+    saveEvidence(enrichedItem);
+    updateEvidenceState(evidence.map((evidenceItem) => (evidenceItem.id === item.id ? enrichedItem : evidenceItem)));
+    if (packet && !isDemo) {
+      removePacketForCase(incidentCase.id);
+      setPacket(null);
+      setGenerationNotice("Evidence changed - regenerate the packet to refresh claim mapping.");
+      updateCase(incidentCase.id, { status: "draft" });
+      setIncidentCase({ ...incidentCase, status: "draft", updatedAt: new Date().toISOString() });
+    }
   };
 
   const handleRemoveEvidence = (evidenceId: string) => {
@@ -182,6 +186,13 @@ export default function CaseDetailPage() {
       sessionObjectUrls.current.delete(removedItem.fileUrl);
     }
     updateEvidenceState(evidence.filter((item) => item.id !== evidenceId));
+    if (packet && !isDemo) {
+      removePacketForCase(incidentCase.id);
+      setPacket(null);
+      setGenerationNotice("Evidence changed - regenerate the packet to refresh claim mapping.");
+      updateCase(incidentCase.id, { status: "draft" });
+      setIncidentCase({ ...incidentCase, status: "draft", updatedAt: new Date().toISOString() });
+    }
   };
 
   const generateButtonBlockedReason =
@@ -285,7 +296,7 @@ export default function CaseDetailPage() {
                 </div>
               ) : (
                 <div className="mt-5">
-                  <EvidenceUpload caseId={incidentCase.id} onUpload={handleUpload} />
+                  <EvidenceUpload incidentCase={incidentCase} onUpload={handleUpload} />
                 </div>
               )}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { saveEvidence } from "@/lib/localStorage";
-import type { EvidenceItem, FileType, TrustLabel } from "@/types";
+import type { EvidenceItem, EvidenceRelevance, FileType, TrustLabel } from "@/types";
 import { File, FileText, Image, Mic, Video, X } from "lucide-react";
 import NextImage from "next/image";
 import { useState } from "react";
@@ -30,6 +30,13 @@ const trustColorMap: Record<TrustLabel, string> = {
   needs_human_verification: "var(--accent-red)",
 };
 
+const relevanceColorMap: Record<EvidenceRelevance, string> = {
+  case_relevant: "var(--accent-green)",
+  possibly_relevant: "var(--accent-amber)",
+  unclear: "var(--accent-amber)",
+  not_relevant: "var(--accent-red)",
+};
+
 function formatFileSize(size?: number): string {
   if (!size) {
     return "Size not available";
@@ -50,12 +57,26 @@ function formatTrustLabel(label?: TrustLabel): string {
   return (label ?? "user_provided").replaceAll("_", " ");
 }
 
+function formatRelevanceLabel(label?: EvidenceRelevance): string {
+  if (label === "case_relevant") {
+    return "case relevant";
+  }
+
+  if (label === "not_relevant") {
+    return "not relevant";
+  }
+
+  return label?.replaceAll("_", " ") ?? "unclear";
+}
+
 export function EvidenceCard({ item, onRemove, onUpdate, readOnly = false }: EvidenceCardProps) {
   const Icon = fileIcons[item.fileType];
   const [note, setNote] = useState(item.note ?? "");
   const [isEditingNote, setIsEditingNote] = useState(false);
   const trustLabel = item.trustLabel ?? "user_provided";
   const trustColor = trustColorMap[trustLabel];
+  const relevanceLabel = item.relevanceLabel ?? "unclear";
+  const relevanceColor = relevanceColorMap[relevanceLabel];
 
   const saveNote = () => {
     const nextItem = { ...item, note: note.trim() || undefined };
@@ -112,6 +133,16 @@ export function EvidenceCard({ item, onRemove, onUpdate, readOnly = false }: Evi
             >
               {formatTrustLabel(trustLabel)}
             </span>
+            <span
+              className="rounded-full border px-2 py-0.5 text-xs font-semibold"
+              style={{
+                backgroundColor: `color-mix(in srgb, ${relevanceColor} 12%, transparent)`,
+                borderColor: `color-mix(in srgb, ${relevanceColor} 42%, transparent)`,
+                color: relevanceColor,
+              }}
+            >
+              {formatRelevanceLabel(relevanceLabel)}
+            </span>
           </div>
           <p className="mt-1 font-mono text-xs uppercase" style={{ color: "var(--text-muted)" }}>
             {item.fileType} - {formatFileSize(item.fileSize)}
@@ -122,6 +153,13 @@ export function EvidenceCard({ item, onRemove, onUpdate, readOnly = false }: Evi
               SHA-256 {item.sha256Hash.slice(0, 16)}...
             </p>
           ) : null}
+
+          <div className="mt-3 rounded-md border px-3 py-2 text-xs leading-5" style={{ backgroundColor: "var(--bg-elevated)", borderColor: "var(--border-subtle)", color: "var(--text-muted)" }}>
+            <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+              Analysis:
+            </span>{" "}
+            {item.analysisSummary ?? "Evidence role is unclear. Add a note explaining what this file proves."}
+          </div>
 
           <div className="mt-3">
             {isEditingNote && !readOnly ? (

@@ -24,7 +24,7 @@ export function TrustPanel({ evidence }: TrustPanelProps) {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-              Overall Evidence Trust
+              Evidence Confidence Signal
             </p>
             <div className="mt-2 flex items-end gap-3">
               <span className="font-mono text-5xl font-bold leading-none" style={{ color: trustScore.color }}>
@@ -36,7 +36,7 @@ export function TrustPanel({ evidence }: TrustPanelProps) {
             </div>
           </div>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Based on file metadata analysis
+            Based on upload metadata and case relevance signals
           </p>
         </div>
       </div>
@@ -46,7 +46,7 @@ export function TrustPanel({ evidence }: TrustPanelProps) {
           <thead style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
             <tr>
               <th className="px-4 py-3">File</th>
-              <th className="px-4 py-3">Trust Label</th>
+              <th className="px-4 py-3">Upload Label</th>
               <th className="px-4 py-3">What this means</th>
             </tr>
           </thead>
@@ -76,8 +76,8 @@ export function TrustPanel({ evidence }: TrustPanelProps) {
       <div className="flex gap-3 rounded-lg border p-4 text-sm leading-6" style={{ backgroundColor: "color-mix(in srgb, var(--accent-amber) 8%, transparent)", borderColor: "color-mix(in srgb, var(--accent-amber) 38%, transparent)", color: "var(--text-primary)" }}>
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--accent-amber)" }} />
         <p>
-          CivicProof cannot detect AI-generated images or deepfakes. All evidence is labeled based on file metadata only.
-          Human verification is recommended for official submissions.
+          CivicProof cannot detect AI-generated images or deepfakes. Labels are based on filename, notes, upload
+          metadata, and case-relevance signals only. Human verification is recommended for official submissions.
         </p>
       </div>
 

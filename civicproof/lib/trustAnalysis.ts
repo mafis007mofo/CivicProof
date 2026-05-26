@@ -10,12 +10,12 @@ const trustLabelMeta: Record<TrustLabel, TrustLabelMeta> = {
   user_provided: {
     color: "var(--accent-green)",
     bgColor: "rgba(34,197,94,0.1)",
-    description: "Submitted directly by user",
+    description: "Uploaded by user; authenticity not verified",
   },
   metadata_available: {
     color: "var(--accent-green)",
     bgColor: "rgba(34,197,94,0.1)",
-    description: "File metadata present and readable",
+    description: "Basic file properties are present",
   },
   metadata_missing: {
     color: "var(--accent-amber)",
@@ -80,6 +80,14 @@ export function getTrustLabelMeta(label: TrustLabel): TrustLabelMeta {
 
 export function getOverallTrustScore(evidence: EvidenceItem[]): { score: number; label: string; color: string } {
   const score = evidence.reduce((currentScore, item) => {
+    if (item.relevanceLabel === "not_relevant") {
+      return currentScore - 25;
+    }
+
+    if (item.relevanceLabel === "unclear" || item.relevanceLabel === "possibly_relevant") {
+      return currentScore - 10;
+    }
+
     if (item.trustLabel === "metadata_missing") {
       return currentScore - 10;
     }
@@ -97,16 +105,16 @@ export function getOverallTrustScore(evidence: EvidenceItem[]): { score: number;
     }
 
     return currentScore;
-  }, 100);
+  }, evidence.length > 0 ? 70 : 0);
   const clampedScore = Math.max(0, Math.min(100, score));
 
   if (clampedScore <= 39) {
-    return { score: clampedScore, label: "Low Trust", color: "var(--accent-red)" };
+    return { score: clampedScore, label: "Low Confidence", color: "var(--accent-red)" };
   }
 
   if (clampedScore <= 69) {
-    return { score: clampedScore, label: "Moderate Trust", color: "var(--accent-amber)" };
+    return { score: clampedScore, label: "Moderate Confidence", color: "var(--accent-amber)" };
   }
 
-  return { score: clampedScore, label: "High Trust", color: "var(--accent-green)" };
+  return { score: clampedScore, label: "Higher Confidence", color: "var(--accent-green)" };
 }

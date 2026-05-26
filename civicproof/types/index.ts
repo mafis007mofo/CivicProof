@@ -12,6 +12,8 @@ export type TrustLabel =
   | "ai_risk_unknown"
   | "needs_human_verification";
 
+export type EvidenceRelevance = "case_relevant" | "possibly_relevant" | "unclear" | "not_relevant";
+
 export type ClaimStatus =
   | "supported_by_user_evidence"
   | "user_statement_only"
@@ -42,6 +44,11 @@ export type EvidenceItem = {
   note?: string;
   sha256Hash?: string;
   trustLabel?: TrustLabel;
+  evidenceCategory?: string;
+  relevanceLabel?: EvidenceRelevance;
+  relevanceScore?: number;
+  analysisSummary?: string;
+  requiredEvidenceMatches?: string[];
   uploadedAt: string;
 };
 
