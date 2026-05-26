@@ -113,24 +113,46 @@ function CaseCard({ incidentCase, score }: CaseCardModel) {
 }
 
 export default function DashboardPage() {
-  const [caseCards, setCaseCards] = useState<CaseCardModel[]>([]);
+  const [cases, setCases] = useState<IncidentCase[]>([]);
+  const [scoresByCaseId, setScoresByCaseId] = useState<Record<string, ScoreBreakdown>>({});
   const [filter, setFilter] = useState<FilterValue>("all");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const loadedCases = getAllCases();
-      setCaseCards(
-        loadedCases.map((incidentCase) => ({
-          incidentCase,
-          score: calculateEvidenceScore(incidentCase, getEvidenceForCase(incidentCase.id)),
-        })),
-      );
-      setIsLoading(false);
-    }, 0);
+    let isActive = true;
 
-    return () => window.clearTimeout(timer);
+    window.queueMicrotask(() => {
+      if (!isActive) {
+        return;
+      }
+
+      const loadedCases = getAllCases();
+      const loadedScores = loadedCases.reduce<Record<string, ScoreBreakdown>>(
+        (scores, incidentCase) => ({
+          ...scores,
+          [incidentCase.id]: calculateEvidenceScore(incidentCase, getEvidenceForCase(incidentCase.id)),
+        }),
+        {},
+      );
+
+      setCases(loadedCases);
+      setScoresByCaseId(loadedScores);
+      setIsLoading(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
+
+  const caseCards = useMemo<CaseCardModel[]>(
+    () =>
+      cases.map((incidentCase) => ({
+        incidentCase,
+        score: scoresByCaseId[incidentCase.id],
+      })).filter((item): item is CaseCardModel => Boolean(item.score)),
+    [cases, scoresByCaseId],
+  );
 
   const sortedCaseCards = useMemo(
     () =>
@@ -191,12 +213,6 @@ export default function DashboardPage() {
           })}
         </div>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
-          {filteredCases.map(({ incidentCase, score }) => (
-            <CaseCard key={incidentCase.id} incidentCase={incidentCase} score={score} />
-          ))}
-        </div>
-
         {isLoading ? (
           <section className="mt-8 grid gap-5 lg:grid-cols-2">
             {[0, 1].map((item) => (
@@ -207,7 +223,13 @@ export default function DashboardPage() {
               />
             ))}
           </section>
-        ) : null}
+        ) : (
+          <div className="mt-8 grid gap-5 lg:grid-cols-2">
+            {filteredCases.map(({ incidentCase, score }) => (
+              <CaseCard key={incidentCase.id} incidentCase={incidentCase} score={score} />
+            ))}
+          </div>
+        )}
 
         {!isLoading && nonDemoCount === 0 ? (
           <section className="mt-8 rounded-lg border p-8 text-center" style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--border-subtle)" }}>
